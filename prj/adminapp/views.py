@@ -769,3 +769,55 @@ class UpdatePaymentStatus(APIView):
         payment.save()
 
         return Response({"status": True, "message": "Payment status updated successfully", "data": {"id": payment.id, "status": payment.status}}, status=status.HTTP_200_OK)
+
+
+class meterreading(APIView):
+    def post(self,request):
+        data=request.data
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='admin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        tokenuser=data.get('tokenuser')
+        print(tokenuser)
+        meterid=data.get('meterid')
+        if meterid:
+            meterid = UserMeters.objects.get(id=meterid)
+            print(meterid)
+        power=data.get('power')
+        print(power)
+        # datetime=data.get('datetime')
+        metere_data=data.get('data')
+        print(metere_data)
+        meter_status=data.get('status')
+        print(meter_status)
+        userreading=UserMeterReadings.objects.create(user_token=tokenuser,meter_id=meterid,power=power,data=metere_data,status=meter_status)
+        print(userreading)
+        userreading.save()
+        return Response({"status": True, "message": "Meter reading created successfully"}, status=status.HTTP_201_CREATED)
+    
+class getmeterreading(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='admin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        usertoken= '112w123dwqqwdwqwq'
+        if usertoken:
+            user = UserMeterReadings.objects.filter(user_token=usertoken)
+            serial = UserMeterReadingsSerial(user,many=True)
+            return Response({"status": True, "message": "Meter reading fetched successfully","data": serial.data}, status=status.HTTP_200_OK)
+        else:
+            return Response({"status": False, "message": "User token is required"}, status=status.HTTP_400_BAD_REQUEST)
+        # user = UserMeterReadings.objects.all()
+        # serial = UserMeterReadingsSerial(user,many=True)
+        
+        # return Response({"status": True, "message": "Meter reading fetched successfully","data": serial.data}, status=status.HTTP_200_OK)

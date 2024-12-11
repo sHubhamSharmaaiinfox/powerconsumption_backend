@@ -27,4 +27,6 @@ urlpatterns = [
    path('get-payment', views.GetPayment.as_view()),
    path('get-payment-id', views.GetPaymentsID.as_view()),
    path('update-payment', views.UpdatePaymentStatus.as_view()),
+   path('create-datareading', views.meterreading.as_view()),
+   path('get-readings', views.getmeterreading.as_view()),
 ]

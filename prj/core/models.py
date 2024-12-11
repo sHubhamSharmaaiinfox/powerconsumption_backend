@@ -57,11 +57,13 @@ class UserMeters(models.Model):
 
 
 class UserMeterReadings(models.Model):
+    user_token=models.CharField(max_length=250)
     meter_id = models.ForeignKey("core.UserMeters",db_column="meter_id",on_delete=models.CASCADE)
     power= models.CharField(max_length=200)
-    datetime = models.DateTimeField(default=datetime.utcnow)
-    Amphere= models.CharField(max_length=250,default='1')
-    volt = models.CharField(max_length=250,default='1')
+    datetime = models.DateTimeField(default=datetime.now())
+    data = models.JSONField()
+    # Amphere= models.CharField(max_length=250,default='1')
+    # volt = models.CharField(max_length=250,default='1')
     status= models.CharField(max_length=250,default='1')
     class Meta:
         db_table='usermeterreadings'
