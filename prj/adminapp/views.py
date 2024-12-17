@@ -32,11 +32,9 @@ class CreateUser(APIView):
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
         
         first_name = data.get('first_name')
-        print(data)
         last_name = data.get('last_name')
         password = data.get('password')
         cpassword = data.get('confirm_password')
-   
         username=data.get('username')
         email= data.get('email')
 
@@ -61,7 +59,7 @@ class CreateUser(APIView):
 
         if password==cpassword:
             
-            User.objects.create(username=username,password=make_password(password),first_name=first_name,email=email,last_name=last_name) 
+            User.objects.create(username=username,password=make_password(password),first_name=first_name,email=email,last_name=last_name,verified_at=True) 
 
             payload_ = {'email': email,"method":"verified", 'exp': datetime.utcnow() + timedelta(minutes=5)}
             token = jwt.encode(payload=payload_,
@@ -141,9 +139,10 @@ class GetAllUser(APIView):
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
         
         user = User.objects.filter(role="user",verified_at=True)
+        print(user)
         serial = UserSerial(user,many=True)
         
-        return Response({"status": True, "message": "Email verified successfully","data": serial.data}, status=status.HTTP_200_OK)
+        return Response({"status": True, "message": "All User Data","data": serial.data}, status=status.HTTP_200_OK)
       
 
 class GetUserID(APIView):
@@ -172,7 +171,7 @@ class GetUserID(APIView):
 
 
 class UpdateUser(APIView):
-    def put(self, request):
+    def post(self, request):
         token = request.META.get('HTTP_AUTHORIZATION')  
         try:
             d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
@@ -189,18 +188,15 @@ class UpdateUser(APIView):
         except User.DoesNotExist:
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        first_name = request.data.get('first_name')
-        last_name = request.data.get('last_name')
+        data = request.data
+        user = User.objects.get(id=data.get('id'))
+        serial = UserSerial(user,data=data,partial=True)
+        if serial.is_valid():
+            serial.save()
+            return Response({"status": True, "message": "User details updated successfully"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"status":False,"message":serial.errors},status=status.HTTP_400_BAD_REQUEST)
         
-      
-        if first_name:
-            user.first_name = first_name
-        if last_name:
-            user.last_name = last_name
-
-
-        user.save()
-        return Response({"status": True, "message": "User details updated successfully"}, status=status.HTTP_200_OK)
 
 
 class VerifiedUsers(APIView):
@@ -222,18 +218,7 @@ class VerifiedUsers(APIView):
         # Fetch all verified users
         verified_users = User.objects.filter(status="1")
 
-        # Serialize user data
-        user_data = [
-            {
-                "id": user.id,
-                "email": user.email,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "verified_at":user.verified_at
-            }
-            for user in verified_users
-        ]
-
+        user_data= UserSerial(verified_users,many=True).data
         return Response(
             {"status": True, "message": "Verified users fetched successfully", "data": user_data},
             status=status.HTTP_200_OK,
@@ -263,31 +248,21 @@ class UnverifiedUsers(APIView):
         unverified_users = User.objects.filter(status="0")
 
         # Serialize user data
-        user_data = [
-            {
-                "id": user.id,
-                "email": user.email,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "verified_at":user.verified_at
-            }
-            for user in unverified_users
-        ]
-
+        user_data = UserSerial(unverified_users,many=True).data
         return Response(
             {"status": True, "message": "Unverified users fetched successfully", "data": user_data},
             status=status.HTTP_200_OK,
         )
 
 class DisableUser(APIView):
-    def put(self, request):
-        token = request.META.get('HTTP_AUTHORIZATION')  # Extract token from the header
+    def post(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')  
         try:
-            # Decode the JWT token
+            
             d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
             usr = User.objects.get(email=d.get("email"))
 
-            # Check if the logged-in user is authorized (e.g., admin access)
+            
             if d.get('method') != "verified" or usr.role != 'admin':
                 return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
         except jwt.ExpiredSignatureError:
@@ -297,13 +272,13 @@ class DisableUser(APIView):
         except User.DoesNotExist:
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Extract `id` and `status` from the request body
+        
         user_id = request.data.get('id')
-        status_value = request.data.get('status')
+        
 
-        if user_id is None or status_value is None:
+        if user_id is None :
             return Response(
-                {"status": False, "message": "Both 'id' and 'status' are required in the request body"},
+                {"status": False, "message": "User id required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
@@ -313,19 +288,15 @@ class DisableUser(APIView):
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Update the user's status
-        if status_value == 1:
-            user.status = 1  
-            message = "User enabled successfully"
-        elif status_value == 0:
-            user.status = 0  
+        if user.status == "1":
+            user.status = "0"  
             message = "User disabled successfully"
         else:
-            return Response(
-                {"status": False, "message": "'status' must be 1 (enable) or 0 (disable)"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            user.status = "1"  
+            message = "User enabled successfully"
+        user.updated_at = datetime.now()
 
-        user.save()  # Save the updated status
+        user.save()  
         return Response({"status": True, "message": message}, status=status.HTTP_200_OK)
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -536,7 +507,7 @@ class CreateMembership(APIView):
 
 
 class UpdateMembership(APIView):
-    def put(self, request):
+    def post(self, request):
         token = request.META.get('HTTP_AUTHORIZATION')
         try:
             d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
@@ -619,8 +590,10 @@ class GetMembershipById(APIView):
         return Response({"status": True, "message": "Membership fetched successfully", "data": serializer.data}, status=status.HTTP_200_OK)
     
 
+
+
 class UpdateMembershipStatus(APIView):
-    def put(self, request):
+    def post(self, request):
         token = request.META.get('HTTP_AUTHORIZATION')
         try:
             d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
@@ -633,25 +606,17 @@ class UpdateMembershipStatus(APIView):
             return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
         except User.DoesNotExist:
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        
         id = request.data.get('id')  
         try:
             membership = Memberships.objects.get(id=id)
         except Memberships.DoesNotExist:
             return Response({"status": False, "message": "Membership not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        
-        new_status = request.data.get('status')
-        if new_status is None:
-            return Response({"status": False, "message": "Missing 'status' in request"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if not isinstance(new_status, bool):
-            return Response({"status": False, "message": "'status' must be a boolean value"}, status=status.HTTP_400_BAD_REQUEST)
-
-        membership.status = new_status
-        membership.updated_at = datetime.utcnow()
+        if membership.status == '1':
+            membership.status = "0"
+        else:
+            membership.status = '1'
+        membership.updated_at = datetime.now()
         membership.save()
-
         return Response({"status": True, "message": "Membership status updated successfully", "data": {"id": membership.id, "status": membership.status}}, status=status.HTTP_200_OK)
 
 
@@ -725,13 +690,33 @@ class GetPayment(APIView):
         except:
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
         
-        user = Payment.objects.all()
-        serial = PaymentSerializer(user,many=True)
+        data = Payment.objects.all()
+        data=[{"username":User.objects.get(id=i.user_id.id).username,"email":User.objects.get(id=i.user_id.id).email,"currrency":i.currrency,"status":i.status,"comment":i.comment,"image":i.image,"created_at":i.created_at,"amount":i.amount} for i in data]
         
-        return Response({"status": True, "message": "Payments retrieved successfully", "data": serial.data},status=status.HTTP_200_OK)
+        
+        return Response({"status": True, "message": "Payments retrieved successfully", "data": data},status=status.HTTP_200_OK)
+
+class GetPendingPayment(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='admin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        data = Payment.objects.filter(status="0")
+        print(data) 
+        data=[{"id":i.id   ,"username":User.objects.get(id=i.user_id.id).username,"email":User.objects.get(id=i.user_id.id).email,"currency":i.currrency,"status":i.status,"comment":i.comment,"image":i.image,"created_at":i.created_at,"amount":i.amount} for i in data]
+        print(data)
+        return Response({"status": True, "message": "Payments retrieved successfully", "data": data},status=status.HTTP_200_OK)
+
+
 
 class UpdatePaymentStatus(APIView):
-    def put(self, request):
+    def post(self, request):
         token = request.META.get('HTTP_AUTHORIZATION')
         try:
             d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
@@ -747,25 +732,16 @@ class UpdatePaymentStatus(APIView):
         
         # Get the payment ID and new status from the request
         payment_id = request.data.get('id')
-        new_status = request.data.get('status')  # Expected values: '0', '1', or '2'
-
+        status_=request.data.get("status")
+        print(payment_id,status_)        
         if not payment_id:
             return Response({"status": False, "message": "Payment ID is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        if new_status is None:
-            return Response({"status": False, "message": "Missing 'status' in request"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if new_status not in ['0', '1', '2']:  # Validate that status is one of the allowed values
-            return Response({"status": False, "message": "'status' must be '0', '1', or '2'"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Find the payment record by ID
         try:
             payment = Payment.objects.get(id=payment_id)
         except Payment.DoesNotExist:
             return Response({"status": False, "message": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Update the payment status
-        payment.status = new_status
+
+        payment.status = status_        
         payment.save()
 
         return Response({"status": True, "message": "Payment status updated successfully", "data": {"id": payment.id, "status": payment.status}}, status=status.HTTP_200_OK)
@@ -783,26 +759,98 @@ class meterreading(APIView):
         except:
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
         tokenuser=data.get('tokenuser')
-        print(tokenuser)
         meterid=data.get('meterid')
         if meterid:
             meterid = UserMeters.objects.get(id=meterid)
-            print(meterid)
         power=data.get('power')
-        print(power)
-        # datetime=data.get('datetime')
         metere_data=data.get('data')
-        print(metere_data)
-        meter_status=data.get('status')
-        print(meter_status)
-        userreading=UserMeterReadings.objects.create(user_token=tokenuser,meter_id=meterid,power=power,data=metere_data,status=meter_status)
-        print(userreading)
+        meter_status=data.get('status')   
+        userreading=UserMeterReadings.objects.create(user_token=tokenuser,meter_id=meterid,power=power,data=metere_data,status=meter_status)   
         userreading.save()
         return Response({"status": True, "message": "Meter reading created successfully"}, status=status.HTTP_201_CREATED)
-    
+
+
+
+
+
+
 class getmeterreading(APIView):
-    def get(self,request):
+    def post(self,request):
         token = request.META.get('HTTP_AUTHORIZATION')
+        data=request.data
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='admin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED) 
+        meter_id = data.get("id")
+        print(meter_id)
+        if meter_id:
+            data = UserMeterReadings.objects.filter(meter_id=meter_id)
+            serial = UserMeterReadingsSerial(data,many=True)
+            return Response({"status": True, "message": "Meter reading fetched successfully","data": serial.data}, status=status.HTTP_200_OK)
+        else:
+            return Response({"status": False, "message": "User token is required"}, status=status.HTTP_400_BAD_REQUEST)
+     
+
+
+class MetersData(APIView):
+    def post(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        data=request.data
+        print(data)
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='admin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED) 
+
+        user_id=data.get("id")
+        if user_id is None:
+            return Response({"status":False,"message":"Invalid user Id"},status=status.HTTP_400_BAD_REQUEST )
+        members_id = [i.id for i in UserMemberships.objects.filter(user_id=user_id)]
+        meters = UserMeters.objects.filter(member_id__in = members_id)
+        meters = UserMeterSerial(meters,many=True).data
+        return Response({"status":True,"message":"Meters data","data":meters},status=status.HTTP_200_OK)
+    
+
+class MeterStatus(APIView):
+    def post(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        data=request.data
+        
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='admin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED) 
+
+        id = data.get("id")
+        
+        try:
+            meter = UserMeters.objects.get(id=id)
+            if meter.status =="1":
+                meter.status = "0"
+            else:
+                meter.status = "1"
+            meter.save()
+        except:
+            return Response({"status":False,"message":"Meter Id Not Found"},status=status.HTTP_400_BAD_REQUEST)
+    
+        
+        return Response({"status":True,"message":"success"},status=status.HTTP_200_OK)
+    
+class Detailuser(APIView):
+    def post(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        data=request.data
+        print(data)
         try:
             d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
             usr = User.objects.get(email = d.get("email"))
@@ -810,14 +858,46 @@ class getmeterreading(APIView):
                 return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
         except:
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
-        usertoken= '112w123dwqqwdwqwq'
-        if usertoken:
-            user = UserMeterReadings.objects.filter(user_token=usertoken)
-            serial = UserMeterReadingsSerial(user,many=True)
-            return Response({"status": True, "message": "Meter reading fetched successfully","data": serial.data}, status=status.HTTP_200_OK)
-        else:
-            return Response({"status": False, "message": "User token is required"}, status=status.HTTP_400_BAD_REQUEST)
-        # user = UserMeterReadings.objects.all()
-        # serial = UserMeterReadingsSerial(user,many=True)
+        id = data.get("id")
+        try:
+            userdetail=User.objects.get(id=id)
+            userdetailser=UserSerial(userdetail).data
+            return Response({"status":True,"message":"User Detail data fetched","data":userdetailser},status=status.HTTP_200_OK)
+
+
+        except Exception as e:
+            return Response({"status":False,"message":"User detail data not fetched"},status=status.HTTP_404_NOT_FOUND)
+
+class GetUserCount(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
         
-        # return Response({"status": True, "message": "Meter reading fetched successfully","data": serial.data}, status=status.HTTP_200_OK)
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            active_user=User.objects.filter(status='1').count()
+            inactive_user=User.objects.filter(status='0').count()
+            total_user = User.objects.all().count()
+            total_subscription= UserMemberships.objects.all().count()
+            total_meter = UserMeters.objects.all().count()
+            data={
+            "active_users": active_user,
+            "inactive_users": inactive_user,
+            "total_users": total_user,
+            "total_subscriptions": total_subscription,
+            "total_meter": total_meter
+        }
+            return Response({"status":True,"message":"USer and Subscription count fetched","data":data},status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": False, "message": "Membership not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        

@@ -40,12 +40,9 @@ class MetersData(APIView):
         meter_readings =  UserMeterReadings.objects.filter(meter_id__in=meter_id)
         overall_consumption = sum([float(i.power) for i in meter_readings])
         max_power_row = UserMeterReadings.objects.filter(meter_id__in=meter_id).order_by('-power').first().power
-        #dates
         current_date = now().date()
         current_month = now().month
         current_year = now().year
-
-        # Query today's records
         today_records = UserMeterReadings.objects.filter(datetime__startswith=current_date,meter_id__in=meter_id)
         
         # Query this month's records

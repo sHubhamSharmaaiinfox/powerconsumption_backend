@@ -57,11 +57,11 @@ class UserMeters(models.Model):
 
 
 class UserMeterReadings(models.Model):
-    user_token=models.CharField(max_length=250)
+    user_token=models.CharField(max_length=250,default=0)
     meter_id = models.ForeignKey("core.UserMeters",db_column="meter_id",on_delete=models.CASCADE)
     power= models.CharField(max_length=200)
     datetime = models.DateTimeField(default=datetime.now())
-    data = models.JSONField()
+    data = models.JSONField(default=0,null=True)
     # Amphere= models.CharField(max_length=250,default='1')
     # volt = models.CharField(max_length=250,default='1')
     status= models.CharField(max_length=250,default='1')
@@ -126,6 +126,9 @@ class WsGroupNames(models.Model):
         db_table = 'wsgroupnames'
 
 
+
+
+
 class Payment(models.Model):
     user_id=models.ForeignKey("core.User", db_column='user_id', on_delete=models.CASCADE)
     amount= models.CharField(max_length=255, default=100)
@@ -133,5 +136,6 @@ class Payment(models.Model):
     status=models.CharField(max_length=200,default='1') #0- pending ,1-completed ,2-cancelled
     comment= models.CharField(max_length=255, null=True)
     image= models.CharField(max_length=255, null=True)
+    created_at = models.CharField(max_length=255,default=datetime.now())
     class Meta:
         db_table='payment'
