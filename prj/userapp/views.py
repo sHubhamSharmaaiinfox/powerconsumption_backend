@@ -353,9 +353,85 @@ class MeterConsumptionLogs(APIView):
         )
 
 
+class Membershipplans(APIView):
+    def get(self, request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        membership=Memberships.objects.filter(status="1")
+        membership=MembershipsSerial(membership,many=True).data
+        return Response(
+            {"status":True,
+            "message":"success",
+            "data":membership},
+            status=status.HTTP_200_OK 
+        )
 
 
+class Paymentreceived(APIView):
+    def post(self, request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        id_ = usr
+        plan_id = data.get('plan_id')
+        plan= Memberships.objects.get(id=plan_id)
+        comments= data.get('comment')
+        image_path = data.get('imagepath')
+       
+   
+       
+        start_date_obj = datetime.now()
+        expiry_date = start_date_obj + timedelta(days=plan.plan_period * 30)
+        UserMemberships.objects.create(user_id=usr,plan_id=plan,status="0",amount=plan.amount,expire_date=expiry_date)
+ 
+        Payment.objects.create(user_id= usr,amount=plan.amount,currrency="INR",status="0",comment=comments,image=image_path)
+       
+ 
+ 
+       
+       
+ 
+        return Response(
+            {"status":True,
+            "message":"success"},
+            status=status.HTTP_200_OK
+        )
+   
 
 
+class getMembership(APIView):
+    def post(self, request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        id=data.get("plan_id")
+        membership=Memberships.objects.get(id=id)
+        membership=MembershipsSerial(membership).data
+        return Response(
+            {"status":True,
+            "message":"success",
+            "data":membership},
+            status=status.HTTP_200_OK 
+        )
 
-
+    

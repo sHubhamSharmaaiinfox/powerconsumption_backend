@@ -12,5 +12,9 @@ urlpatterns = [
     path('meter-list',views.MeterList.as_view()),
     path('meter-chart',views.MeterChart.as_view()),
     path('meter-chart-daily',views.MeterChartDaily.as_view()),
-    path('meter-consumption-logs',views.MeterConsumptionLogs.as_view())
+    path('meter-consumption-logs',views.MeterConsumptionLogs.as_view()),
+    path('membershipplan',views.Membershipplans.as_view()),
+    path('paymentreceived',views.Paymentreceived.as_view()),
+    path('getMembership',views.getMembership.as_view())
+ 
 ]

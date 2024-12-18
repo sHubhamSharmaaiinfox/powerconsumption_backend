@@ -15,9 +15,10 @@ import requests
 from django.core.mail import send_mail
 from core.serializer import *
 from core.models import *
-
-
-
+from django.utils.timezone import now
+from django.db.models import Max, Sum ,F
+from django.db.models.functions import ExtractMonth
+from django.db.models import Func
 
 class CreateUser(APIView):
     def post(self,request):
@@ -800,7 +801,7 @@ class MetersData(APIView):
     def post(self,request):
         token = request.META.get('HTTP_AUTHORIZATION')
         data=request.data
-        print(data)
+        print("data ",data)
         try:
             d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
             usr = User.objects.get(email = d.get("email"))
@@ -813,9 +814,42 @@ class MetersData(APIView):
         if user_id is None:
             return Response({"status":False,"message":"Invalid user Id"},status=status.HTTP_400_BAD_REQUEST )
         members_id = [i.id for i in UserMemberships.objects.filter(user_id=user_id)]
+        print("member_id",members_id)
+        meter_id = [i.id for i in UserMeters.objects.filter(member_id = members_id[0])]
+        print("meter id",meter_id)
+        current_date = now().date()
+        current_month = now().month     
+        current_year = now().year
+
+        data = (
+            UserMeterReadings.objects.filter(
+                datetime__year=current_year,
+                datetime__month=current_month,  
+                meter_id__in = meter_id
+                )
+                .values("meter_id")  # Group by meter_id
+                .annotate(
+                total_power_today=Sum("power", filter=models.Q(datetime__date=current_date)),  # Today's total power
+                peak_power_today=Max("power", filter=models.Q(datetime__date=current_date)),   # Today's peak power
+                total_power_month=Sum("power"),  # This month's total power
+                peak_power_month=Max("power")   # This month's peak power
+                )
+            )
+        
+        result = [
+            {   
+                "meter_data": UserMeterSerial(UserMeters.objects.get(id=entry["meter_id"])).data,
+                "total_power_today": entry["total_power_today"] or 0,   
+                "peak_power_today": entry["peak_power_today"] or 0,
+                "total_power_month": entry["total_power_month"] or 0,
+                "peak_power_month": entry["peak_power_month"] or 0,
+            }
+            for entry in data]
         meters = UserMeters.objects.filter(member_id__in = members_id)
         meters = UserMeterSerial(meters,many=True).data
-        return Response({"status":True,"message":"Meters data","data":meters},status=status.HTTP_200_OK)
+        data1={"status":True,"message":"Meters data","data":meters,"comsumption_data":result}
+        print("repoinse",data1)
+        return Response({"status":True,"message":"Meters data","data":result},status=status.HTTP_200_OK)
     
 
 class MeterStatus(APIView):
@@ -888,16 +922,126 @@ class GetUserCount(APIView):
             inactive_user=User.objects.filter(status='0').count()
             total_user = User.objects.all().count()
             total_subscription= UserMemberships.objects.all().count()
+            total_amount = sum([float(i.amount) for i in UserMemberships.objects.all()])
             total_meter = UserMeters.objects.all().count()
+            current_month = now().month
+            current_year = now().year
+            current_month_amount = UserMemberships.objects.filter(
+                    date__startswith=f"{current_year}-{current_month:02d}"  # Format: YYYY-MM
+                ).aggregate(total_amount=Sum('amount'))['total_amount'] or 0.0
             data={
             "active_users": active_user,
             "inactive_users": inactive_user,
             "total_users": total_user,
             "total_subscriptions": total_subscription,
-            "total_meter": total_meter
+            "total_meter": total_meter,
+            "total_amount": total_amount,
+            "current_month_amount":current_month_amount
         }
             return Response({"status":True,"message":"USer and Subscription count fetched","data":data},status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": False, "message": "Membership not found"}, status=status.HTTP_404_NOT_FOUND)
         
+
+
+
+class TotalSubscriptionChart(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
         
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='admin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        current_year = datetime.now().year
+
+        # Filter records for the current year and group by month
+        monthly_data = (
+        UserMemberships.objects.filter(date__startswith=str(current_year))  # Filter by the current year
+        .annotate(date_as_date=Func(F('date'), function='STR_TO_DATE', template="STR_TO_DATE(%(expressions)s, '%%Y-%%m-%%d')"),month=ExtractMonth(F('date')))  # Extract month from date
+        .values('month')  # Group by month
+        .annotate(total_amount=Sum(F('amount')))  # Sum amounts for each month
+        .order_by('month')  # Sort by month
+        )
+        print(monthly_data)
+        result = {month: 0 for month in range(1, 13)}  
+        for entry in monthly_data:
+            result[entry['month']] = entry['total_amount']
+        print(result)
+        return Response({'status':True,"message":'success','data':[]},status=status.HTTP_200_OK)
+
+        
+
+        
+
+        
+
+class KwhData(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        data=request.data
+        try:
+        
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='user':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        members_id = [i.id for i in UserMemberships.objects.filter(user_id=usr.id)]
+        meter_id = [i.id for i in UserMeters.objects.filter(meter_id = members_id)]
+        current_date = now().date()
+        current_month = now().month
+        current_year = now().year
+
+        data = (
+            UserMeterReadings.objects.filter(
+                datetime__year=current_year,
+                datetime__month=current_month,
+                meter_id__in = meter_id
+                )
+                .values("meter_id")  # Group by meter_id
+                .annotate(
+                total_power_today=Sum("power", filter=models.Q(datetime__date=current_date)),  # Today's total power
+                peak_power_today=Max("power", filter=models.Q(datetime__date=current_date)),   # Today's peak power
+                total_power_month=Sum("power"),  # This month's total power
+                peak_power_month=Max("power")   # This month's peak power
+                )
+            )
+
+        result = [
+            {
+                "meter_id": entry["meter_id"],
+                "total_power_today": entry["total_power_today"] or 0,
+                "peak_power_today": entry["peak_power_today"] or 0,
+                "total_power_month": entry["total_power_month"] or 0,
+                "peak_power_month": entry["peak_power_month"] or 0,
+            }
+            for entry in data
+        ]
+        
+        return Response(
+            {"status":True,"data":data[:8]},status = status.HTTP_200_OK
+            )
+
+class GetUserMeterReadings(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='admin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        data = Payment.objects.filter(status="0")
+        print(data) 
+        data=[{"id":i.id   ,"username":User.objects.get(id=i.user_id.id).username,"email":User.objects.get(id=i.user_id.id).email,"currency":i.currrency,"status":i.status,"comment":i.comment,"image":i.image,"created_at":i.created_at,"amount":i.amount} for i in data]
+        print(data)
+        return Response({"status": True, "message": "Payments retrieved successfully", "data": data},status=status.HTTP_200_OK)

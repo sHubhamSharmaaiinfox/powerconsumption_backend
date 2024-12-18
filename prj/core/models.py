@@ -40,6 +40,7 @@ class UserMemberships(models.Model):
     plan_id=models.ForeignKey("core.Memberships", db_column='plan_id', on_delete=models.CASCADE)
     status=models.CharField(max_length=200,default='1')
     date=models.CharField(max_length=200,default=datetime.utcnow())
+    amount=models.CharField(max_length=250,default=0)
     expire_date = models.CharField(max_length=250,null=True)
     class Meta:
         db_table='usermemberships'
