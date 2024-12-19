@@ -895,13 +895,20 @@ class Detailuser(APIView):
         id = data.get("id")
         try:
             userdetail=User.objects.get(id=id)
+           
+            plan_name1=UserMemberships.objects.get(user_id=id)
+            plan_name=plan_name1.plan_id.name
+            print("plan name",plan_name1.id)
+            metercount = len(UserMeters.objects.filter(member_id=plan_name1.id))
+            print("meeterr",metercount)
             userdetailser=UserSerial(userdetail).data
-            return Response({"status":True,"message":"User Detail data fetched","data":userdetailser},status=status.HTTP_200_OK)
-
-
+            data = {"userdata":userdetailser,"plan_name":plan_name,"meter_count":metercount}
+            return Response({"status":True,"message":"User Detail data fetched","data":data},status=status.HTTP_200_OK)
+ 
+ 
         except Exception as e:
             return Response({"status":False,"message":"User detail data not fetched"},status=status.HTTP_404_NOT_FOUND)
-
+ 
 class GetUserCount(APIView):
     def get(self, request):
         token = request.META.get('HTTP_AUTHORIZATION')
@@ -1045,3 +1052,54 @@ class GetUserMeterReadings(APIView):
         data=[{"id":i.id   ,"username":User.objects.get(id=i.user_id.id).username,"email":User.objects.get(id=i.user_id.id).email,"currency":i.currrency,"status":i.status,"comment":i.comment,"image":i.image,"created_at":i.created_at,"amount":i.amount} for i in data]
         print(data)
         return Response({"status": True, "message": "Payments retrieved successfully", "data": data},status=status.HTTP_200_OK)
+
+class createqrupi(APIView):
+    def post(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        data = request.data
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            try:
+                Merchant_name=data.get('Merchant_name')
+                upiid=data.get('upi_id')
+                upi=UPIID_data.objects.all()[0]
+                upi.Merchant_name=Merchant_name
+                upi.upi_id=upiid
+                upi.save()
+            except Exception as e:
+                print("error",e)
+            return Response({"status":True,"message":"UPI id add succesfully"},status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"status": False, "message": "Membership not found"}, status=status.HTTP_404_NOT_FOUND)
+ 
+ 
+class Updatepassword(APIView):
+    def post(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')  
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        confirm_password=request.data.get('confirm_password')
+        password = request.data.get('password')
+        if confirm_password==password:
+            usr.password=make_password(password)
+            usr.save()
+            return Response({"status": True, "message": "User password updated successfully"}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"status":False,},status=status.HTTP_400_BAD_REQUEST)
+ 

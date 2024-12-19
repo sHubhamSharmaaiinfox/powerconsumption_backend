@@ -48,13 +48,13 @@ class UserMemberships(models.Model):
 
 class UserMeters(models.Model):
     member_id = models.ForeignKey("core.UserMemberships",db_column='member_id',on_delete=models.CASCADE)
+    token = models.TextField(default='')
     name= models.CharField(max_length=250)
     status=models.CharField(max_length=200,default='1')
     location = models.TextField()
     created_at = models.CharField(max_length=200,default=datetime.utcnow())
     class Meta:
         db_table = 'userdevices'
-
 
 
 class UserMeterReadings(models.Model):
@@ -140,3 +140,10 @@ class Payment(models.Model):
     created_at = models.CharField(max_length=255,default=datetime.now())
     class Meta:
         db_table='payment'
+
+
+class UPIID_data(models.Model):
+    Merchant_name=models.CharField(max_length=255,default="")
+    upi_id = models.CharField(max_length=255,default="")
+    class Meta:
+        db_table='UPIID_data'

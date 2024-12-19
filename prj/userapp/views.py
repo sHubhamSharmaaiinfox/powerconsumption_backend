@@ -13,7 +13,7 @@ from datetime import datetime,timedelta
 from math import isfinite
 from core.serializer import *
 from django.db.models import Max, Sum  
-from django.utils.timezone import now
+from django.utils.timezone import now,make_aware
 from django.db.models.functions import TruncMonth,TruncHour
 
 
@@ -390,20 +390,12 @@ class Paymentreceived(APIView):
         plan_id = data.get('plan_id')
         plan= Memberships.objects.get(id=plan_id)
         comments= data.get('comment')
-        image_path = data.get('imagepath')
-       
-   
-       
+        image_path = data.get('imagepath') 
         start_date_obj = datetime.now()
         expiry_date = start_date_obj + timedelta(days=plan.plan_period * 30)
         UserMemberships.objects.create(user_id=usr,plan_id=plan,status="0",amount=plan.amount,expire_date=expiry_date)
  
-        Payment.objects.create(user_id= usr,amount=plan.amount,currrency="INR",status="0",comment=comments,image=image_path)
-       
- 
- 
-       
-       
+        Payment.objects.create(user_id= usr,amount=plan.amount,currrency="INR",status="0",comment=comments,image=image_path)     
  
         return Response(
             {"status":True,
@@ -435,3 +427,78 @@ class getMembership(APIView):
         )
 
     
+
+
+ 
+class metercreate(APIView):
+    def post(self, request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        id_ = data.get('id')
+        name = data.get('name')
+        location = data.get('location')
+        plan_id = UserMemberships.objects.get(user_id=id_)
+        print("plan id",plan_id)
+        meter_count = Memberships.objects.get(id=plan_id.plan_id.id)
+        experiy_date=plan_id.expire_date
+        print(experiy_date)
+       
+        user_meter_count = UserMeters.objects.filter(member_id=plan_id.id).count()
+        print("user_meter_count",user_meter_count)
+        if int(user_meter_count)<int(meter_count.plan_period):
+            meter = UserMeters.objects.create(member_id=plan_id,name=name,location=location) # Enter Here Detail
+            given_date = datetime.strptime(f"{experiy_date}", "%Y-%m-%d %H:%M:%S.%f")
+ 
+# Convert given_date to timezone-aware
+            aware_given_date = make_aware(given_date)
+ 
+            # Current timezone-aware datetime
+            current_time = now()
+ 
+            # Calculate the difference
+            difference = current_time - aware_given_date
+            days_difference = difference.days
+            print("fdata",days_difference)
+            payload_ = {'meter_id': meter.id,'exp': datetime.utcnow() + timedelta(days=days_difference)} # calculate days left in usermembership | Enter Days dynamically
+            token = jwt.encode(payload=payload_,
+                                   key=KEYS
+                                   )
+            meter.token = token
+            meter.save()
+            serial = UserMeterSerial(meter).data
+            return Response({"status":True,"Message":"created success","data":serial},status=status.HTTP_200_OK )
+        else:
+            return Response({"status":False,"message":"Limit Exceede"},status=status.HTTP_400_BAD_REQUEST)
+ 
+ 
+class craeteqrcode(APIView):
+    def post(self, request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        id_ = data.get('id')
+        try:
+            plan_amount=Memberships.objects.get(id=id_).amount
+            upidata=UPIID_data.objects.all()[0]
+            try:
+                qr_code_content = f"upi://pay?pa={upidata.upi_id}&pn={upidata.Merchant_name}&am={plan_amount}&cu=INR"
+            except Exception as e:
+                print("expection ",e)
+            # Generate QR code
+            return Response({"status":True,"Message":"created success","data":{qr_code_content}},status=status.HTTP_200_OK )
+        except Exception as e:
+            return Response({"status":False,"message":"Limit Exceede","data":e},status=status.HTTP_400_BAD_REQUEST)
+ 

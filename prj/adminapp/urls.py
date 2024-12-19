@@ -34,5 +34,8 @@ urlpatterns = [
    path("meter-status",views.MeterStatus.as_view()),
    path("user-detail",views.Detailuser.as_view()),
    path('get-usercount',views.GetUserCount.as_view()),
-   path('subscription-chart',views.TotalSubscriptionChart.as_view())
+   path('subscription-chart',views.TotalSubscriptionChart.as_view()),
+   path('createupiid',views.createqrupi.as_view()),
+   path('Updatepassword',views.Updatepassword.as_view()),
+ 
 ]
