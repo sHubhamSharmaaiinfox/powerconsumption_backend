@@ -53,3 +53,8 @@ class UserMeterSerial(serializers.ModelSerializer):
     class Meta:
         model = UserMeters
         fields = '__all__'
+
+class UPIID_dataSerial(serializers.ModelSerializer):
+    class Meta:
+        model = UPIID_data
+        fields = "__all__"

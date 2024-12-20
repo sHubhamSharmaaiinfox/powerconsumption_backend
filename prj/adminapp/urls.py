@@ -37,5 +37,9 @@ urlpatterns = [
    path('subscription-chart',views.TotalSubscriptionChart.as_view()),
    path('createupiid',views.createqrupi.as_view()),
    path('Updatepassword',views.Updatepassword.as_view()),
+   path('get-qr-detail',views.GetQrUpi.as_view()),
+   path('UserCountByMonth',views.UserCountByMonthAPIView.as_view()),
+   path('subscriptionCountByMonth',views.subscriptionCountByMonthAPIView.as_view()),
+   path('deviceCountByMonth',views.deviceCountByMonthAPIView.as_view())
  
 ]

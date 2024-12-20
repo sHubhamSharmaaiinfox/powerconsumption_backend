@@ -392,7 +392,7 @@ class Paymentreceived(APIView):
         comments= data.get('comment')
         image_path = data.get('imagepath') 
         start_date_obj = datetime.now()
-        expiry_date = start_date_obj + timedelta(days=plan.plan_period * 30)
+        expiry_date = start_date_obj + timedelta(days=int(plan.plan_period) * 30)
         UserMemberships.objects.create(user_id=usr,plan_id=plan,status="0",amount=plan.amount,expire_date=expiry_date)
  
         Payment.objects.create(user_id= usr,amount=plan.amount,currrency="INR",status="0",comment=comments,image=image_path)     
@@ -441,22 +441,19 @@ class metercreate(APIView):
                 return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
         except:
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
-        id_ = data.get('id')
+        
         name = data.get('name')
         location = data.get('location')
-        plan_id = UserMemberships.objects.get(user_id=id_)
-        print("plan id",plan_id)
+        plan_id = UserMemberships.objects.get(user_id=usr.id,status='1')
         meter_count = Memberships.objects.get(id=plan_id.plan_id.id)
         experiy_date=plan_id.expire_date
-        print(experiy_date)
-       
         user_meter_count = UserMeters.objects.filter(member_id=plan_id.id).count()
-        print("user_meter_count",user_meter_count)
+        
         if int(user_meter_count)<int(meter_count.plan_period):
             meter = UserMeters.objects.create(member_id=plan_id,name=name,location=location) # Enter Here Detail
             given_date = datetime.strptime(f"{experiy_date}", "%Y-%m-%d %H:%M:%S.%f")
  
-# Convert given_date to timezone-aware
+            # Convert given_date to timezone-aware
             aware_given_date = make_aware(given_date)
  
             # Current timezone-aware datetime
@@ -485,20 +482,61 @@ class craeteqrcode(APIView):
         try:
             d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
             usr = User.objects.get(email=d.get("email"))
+            print(d.get("email"))
             if d.get('method') != "verified" or usr.role != 'user':
                 return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
         except:
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
-        id_ = data.get('id')
-        try:
+        id_ = data.get('plan_id')
+        print(id_)
+        
+        if True:
             plan_amount=Memberships.objects.get(id=id_).amount
+            print(plan_amount)
+            
             upidata=UPIID_data.objects.all()[0]
+            
+            print(upidata)
             try:
+                
                 qr_code_content = f"upi://pay?pa={upidata.upi_id}&pn={upidata.Merchant_name}&am={plan_amount}&cu=INR"
+                print(qr_code_content)
             except Exception as e:
                 print("expection ",e)
             # Generate QR code
-            return Response({"status":True,"Message":"created success","data":{qr_code_content}},status=status.HTTP_200_OK )
-        except Exception as e:
-            return Response({"status":False,"message":"Limit Exceede","data":e},status=status.HTTP_400_BAD_REQUEST)
- 
+            return Response({"status":True,"Message":"UPI Data","data":qr_code_content  },status=status.HTTP_200_OK )
+        
+
+
+class IsMember(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        data = UserMemberships.objects.filter(user_id= usr.id,status="1")
+        if len(data)>0:
+            return Response({"status":True,"data":"1"},status=status.HTTP_200_OK)
+        else:
+            return Response({"status":True,"data":"0"},status=status.HTTP_200_OK)
+        
+
+class GetDevices(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        user_data = UserMemberships.objects.get(user_id = usr.id,status='1')
+        meter_data= UserMeters.objects.filter(member_id = user_data.id)
+        serial = UserMeterSerial(meter_data,many=True).data
+        return  Response({"status":True,"Message":"Devices Data","data":serial},status=status.HTTP_200_OK)

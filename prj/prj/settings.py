@@ -124,12 +124,13 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'powerconsumption',
-        'HOST':'localhost',
-        'USER':'root',
-        'PASSWORD':'root',
+        'HOST':'aiinfox.cf4ysyasm9bi.ap-south-1.rds.amazonaws.com',
+        'USER':'admin',
+        'PASSWORD':'narakanar',
         'PORT':'3306'
     }
 }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators

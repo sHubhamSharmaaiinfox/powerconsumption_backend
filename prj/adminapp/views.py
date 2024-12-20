@@ -1082,6 +1082,27 @@ class createqrupi(APIView):
             return Response({"status":True,"message":"UPI id add succesfully"},status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"status": False, "message": "Membership not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+class GetQrUpi(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        upi=UPIID_data.objects.all()[0]
+        serial = UPIID_dataSerial(upi).data
+        return Response({"status":True,"message":"success","data":serial},status=status.HTTP_200_OK)
+
+
  
  
 class Updatepassword(APIView):
@@ -1102,4 +1123,165 @@ class Updatepassword(APIView):
             return Response({"status": True, "message": "User password updated successfully"}, status=status.HTTP_201_CREATED)
         else:
             return Response({"status":False,},status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+
+from django.db.models.functions import Cast, TruncMonth
+from django.db.models import Count, DateTimeField
+class UserCountByMonthAPIView(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            current_year = datetime.now().year
  
+            # Generate a list of all months for the current year
+            all_months = [
+                datetime(current_year, month, 1) for month in range(1, 13)
+            ]
+ 
+            # Cast 'created_at' (CharField) to DateTimeField and group by month
+            user_counts = (
+            User.objects.annotate(
+                created_at_datetime=Cast('created_at', output_field=DateTimeField())  # Cast to DateTimeField
+            )
+            .annotate(month=TruncMonth('created_at_datetime'))  # Truncate to month
+            .filter(created_at_datetime__year=current_year)  # Only consider current year
+            .values('month')
+            .annotate(count=Count('id'))  # Count users per month
+            .order_by('month')
+        )
+            print("usercount",user_counts)
+ 
+            # Create a dictionary for user counts
+            user_count_dict = {entry['month'].replace(tzinfo=None): entry['count'] for entry in user_counts if entry['month']}
+            print("user_count_dicyt",user_count_dict)
+ 
+            # Populate the counts for all months of the current year, setting 0 for missing months
+            chart_data = {
+                "months": [month.strftime('%B %Y') for month in all_months],  # Format month as "Month Year"
+                "counts": [user_count_dict.get(month.replace(tzinfo=None), 0) for month in all_months],  # Use 0 if no data
+            }
+            print("chart_data",chart_data)
+ 
+ 
+            return Response({"status":True,"message":"USer and Subscription count fetched","data":chart_data},status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": False, "message": e}, status=status.HTTP_404_NOT_FOUND)
+       
+class subscriptionCountByMonthAPIView(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            current_year = datetime.now().year
+ 
+            # Generate a list of all months for the current year
+            all_months = [
+                datetime(current_year, month, 1) for month in range(1, 13)
+            ]
+ 
+            # Cast 'created_at' (CharField) to DateTimeField and group by month
+            user_counts = (
+            UserMemberships.objects.annotate(
+                created_at_datetime=Cast('date', output_field=DateTimeField())  # Cast to DateTimeField
+            )
+            .annotate(month=TruncMonth('created_at_datetime'))  # Truncate to month
+            .filter(created_at_datetime__year=current_year)  # Only consider current year
+            .values('month')
+            .annotate(count=Count('id'))  # Count users per month
+            .order_by('month')
+        )
+         
+ 
+            # Create a dictionary for user counts
+            user_count_dict = {entry['month'].replace(tzinfo=None): entry['count'] for entry in user_counts if entry['month']}
+           
+ 
+            # Populate the counts for all months of the current year, setting 0 for missing months
+            chart_data = {
+                "months": [month.strftime('%B %Y') for month in all_months],  # Format month as "Month Year"
+                "counts": [user_count_dict.get(month.replace(tzinfo=None), 0) for month in all_months],  # Use 0 if no data
+            }
+            print("chart_data",chart_data)
+ 
+ 
+            return Response({"status":True,"message":"subscription Count By Month count fetched","data":chart_data},status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": False, "message": "subscriptionCountByMonthAPIView not Fetched"}, status=status.HTTP_404_NOT_FOUND)
+       
+ 
+class deviceCountByMonthAPIView(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            current_year = datetime.now().year
+ 
+            # Generate a list of all months for the current year
+            all_months = [
+                datetime(current_year, month, 1) for month in range(1, 13)
+            ]
+ 
+            # Cast 'created_at' (CharField) to DateTimeField and group by month
+            user_counts = (
+            UserMeters.objects.annotate(
+                created_at_datetime=Cast('created_at', output_field=DateTimeField())  # Cast to DateTimeField
+            )
+            .annotate(month=TruncMonth('created_at_datetime'))  # Truncate to month
+            .filter(created_at_datetime__year=current_year)  # Only consider current year
+            .values('month')
+            .annotate(count=Count('id'))  # Count users per month
+            .order_by('month')
+        )
+         
+ 
+            # Create a dictionary for user counts
+            user_count_dict = {entry['month'].replace(tzinfo=None): entry['count'] for entry in user_counts if entry['month']}
+                
+           
+ 
+            # Populate the counts for all months of the current year, setting 0 for missing months
+            chart_data = [
+                {"x":month.strftime('%B %Y')[:3],"y":user_count_dict.get(month.replace(tzinfo=None), 0) } for month in all_months # Use 0 if no data
+            ]
+            print("chart_data",chart_data)
+ 
+ 
+            return Response({"status":True,"message":"Device Count By Month count fetched","data":chart_data},status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": False, "message": "DeviceCountByMonthAPIView not Fetched"}, status=status.HTTP_404_NOT_FOUND)

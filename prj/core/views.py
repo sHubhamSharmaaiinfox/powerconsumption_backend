@@ -60,18 +60,18 @@ class ForgotPasswordApi(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
         payload_ = {'email': user.email, 'exp': datetime.utcnow() + timedelta(minutes=5),'method':"change password"}
         token = jwt.encode(payload=payload_,
                                    key=KEYS
                                    )
         url = f"{FRONTEND_URL}/reset-password?token={token}"                           
-        return Response({"message": "Password reset link sent to your email.",'Url':url}, status=status.HTTP_200_OK)
+        return Response({"status":True,"message": "Password reset link sent to your email.",'Url':url}, status=status.HTTP_200_OK)
 
 
         
 class ResetPassword(APIView):
-    def post(self,request,format=None):
+    def post(self,request,format=None): 
         data = request.data
         password = data.get('password')
         confirm_password = data.get('confirm_password')

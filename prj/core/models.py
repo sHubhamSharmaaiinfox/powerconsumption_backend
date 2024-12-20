@@ -136,7 +136,7 @@ class Payment(models.Model):
     currrency= models.CharField(max_length=255, default=100)
     status=models.CharField(max_length=200,default='1') #0- pending ,1-completed ,2-cancelled
     comment= models.CharField(max_length=255, null=True)
-    image= models.CharField(max_length=255, null=True)
+    image= models.TextField(default = "")
     created_at = models.CharField(max_length=255,default=datetime.now())
     class Meta:
         db_table='payment'
@@ -146,4 +146,4 @@ class UPIID_data(models.Model):
     Merchant_name=models.CharField(max_length=255,default="")
     upi_id = models.CharField(max_length=255,default="")
     class Meta:
-        db_table='UPIID_data'
+        db_table='upiid_data'           
