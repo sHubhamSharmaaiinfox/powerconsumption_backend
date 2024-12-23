@@ -9,7 +9,7 @@ urlpatterns = [
     path('kwh-data',views.KwhData.as_view()),
     path('alerts',views.AltersAPI.as_view()),
     path('kwh',views.KwhAPI.as_view()),
-    path('  ',views.MeterList.as_view()),
+    path('meter-list',views.MeterList.as_view()),
     path('meter-chart',views.MeterChart.as_view()),
     path('meter-chart-daily',views.MeterChartDaily.as_view()),
     path('meter-consumption-logs',views.MeterConsumptionLogs.as_view()),
@@ -20,6 +20,10 @@ urlpatterns = [
     path('createqrcode',views.craeteqrcode.as_view()),
     path("ismember",views.IsMember.as_view()),
     path("getDevices",views.GetDevices.as_view()),
-    
- 
-]
+    path("userprofile",views.UserProfile.as_view()),
+    path("ChangeUserPass",views.ChangeUserPassword.as_view()),
+    path("changeuserProfile",views.ChangeUserProfile.as_view()),
+    path('all-alerts',views.AllAlters.as_view()),
+    path('amp-volt-readings',views.AmpReadingsApi.as_view()),
+    path('user-membership-status',views.MembershipStatus.as_view())
+]                   

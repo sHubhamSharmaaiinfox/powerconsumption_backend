@@ -15,6 +15,7 @@ from core.serializer import *
 from django.db.models import Max, Sum  
 from django.utils.timezone import now,make_aware
 from django.db.models.functions import TruncMonth,TruncHour
+from django.contrib.auth.hashers import make_password
 
 
 
@@ -233,6 +234,30 @@ class AltersAPI(APIView):
             {"status":True,"data":serial[:7]},
             status=status.HTTP_200_OK
         )
+
+
+
+class AllAlters(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='user':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        members_id = [i.id for i in UserMemberships.objects.filter(user_id=usr.id)]
+        meter_id = [i.id for i in UserMeters.objects.filter(member_id__in = members_id)]
+        alertsdata=Alerts.objects.filter(meter_id__in = meter_id)
+        serial = AlertsSerial(alertsdata,many=True).data
+        return Response(
+            {"status":True,"data":serial},
+            status=status.HTTP_200_OK
+        )
+
+
 
 
 
@@ -463,7 +488,7 @@ class metercreate(APIView):
             difference = current_time - aware_given_date
             days_difference = difference.days
             print("fdata",days_difference)
-            payload_ = {'meter_id': meter.id,'exp': datetime.utcnow() + timedelta(days=days_difference)} # calculate days left in usermembership | Enter Days dynamically
+            payload_ = {'meter_id': meter.id,'exp': datetime.utcnow() + timedelta(days=abs(days_difference))} # calculate days left in usermembership | Enter Days dynamically
             token = jwt.encode(payload=payload_,
                                    key=KEYS
                                    )
@@ -540,3 +565,126 @@ class GetDevices(APIView):
         meter_data= UserMeters.objects.filter(member_id = user_data.id)
         serial = UserMeterSerial(meter_data,many=True).data
         return  Response({"status":True,"Message":"Devices Data","data":serial},status=status.HTTP_200_OK)
+    
+class UserProfile(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        data = UserSerial(usr).data
+        return Response(
+            {"status":True,"message":"User Profile","data":data},status=status.HTTP_200_OK
+        )
+    
+class ChangeUserPassword(APIView):
+    def post(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        data = request.data
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if data.get("password") == data.get('confirm_password'):
+        
+            usr.password = make_password(data.get('password')) # type: ignore
+            usr.save()
+            return  Response({'status':True,'message':'password updated successfully'},status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "status":False,'message':"password and confirm password mismatch"
+            },
+            status=status.HTTP_400_BAD_REQUEST)
+        
+
+class ChangeUserProfile(APIView):
+    def post(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        data = request.data
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        serial = UserSerial(usr,data=data,partial=True)
+        if serial.is_valid():
+            serial.save()
+            return Response({"status":True,"message":"Profile update successfully"},status=status.HTTP_200_OK)
+        else:
+            return Response({'status':False,'message':serial.errors},status=status.HTTP_400_BAD_REQUEST)
+        
+
+class AmpReadingsApi(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        members_id = [i.id for i in UserMemberships.objects.filter(user_id=usr.id)]
+        meter_id = [i.id for i in UserMeters.objects.filter(member_id__in=members_id)]
+        data = UserMeterReadings.objects.filter(meter_id__in= meter_id)
+        data = UserMeterReadingsSerial(data,many=True).data
+        return Response({"status":True,"message":"Amp and volt readings","data":data},status=status.HTTP_200_OK)
+        
+        
+class MembershipStatus(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            data = UserMemberships.objects.get(user_id = usr.id,status='1')
+            data = UserMembershipsSerial(data).data
+            return Response({'status':True,'message':'user subscription data','data':data},status=status.HTTP_200_OK)
+        except:
+            return  Response({'Status':False,'message':'usermembership not found'},status=status.HTTP_400_BAD_REQUEST)
+
+
+
+        

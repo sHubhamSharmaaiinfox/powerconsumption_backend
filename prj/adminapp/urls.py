@@ -32,14 +32,19 @@ urlpatterns = [
    path('get-pending-payments',views.GetPendingPayment.as_view()),
    path("get-meters",views.MetersData.as_view()),
    path("meter-status",views.MeterStatus.as_view()),
-   path("user-detail",views.Detailuser.as_view()),
+   path("userdetail",views.Detailuser.as_view()),
    path('get-usercount',views.GetUserCount.as_view()),
-   path('subscription-chart',views.TotalSubscriptionChart.as_view()),
+   path('subscription-chart',views.TotalSubscriptionChart.as_view()),            
    path('createupiid',views.createqrupi.as_view()),
    path('Updatepassword',views.Updatepassword.as_view()),
    path('get-qr-detail',views.GetQrUpi.as_view()),
    path('UserCountByMonth',views.UserCountByMonthAPIView.as_view()),
    path('subscriptionCountByMonth',views.subscriptionCountByMonthAPIView.as_view()),
-   path('deviceCountByMonth',views.deviceCountByMonthAPIView.as_view())
+   path('deviceCountByMonth',views.deviceCountByMonthAPIView.as_view()),
+   path("admin-profile",views.AdminProfile.as_view()),
+   path('profile-update',views.ChangeProfile.as_view()),
+   path('change-password',views.ChangePassword.as_view()),
+    path('getuserdetail',views.UserDetailApi.as_view()),
+   
  
 ]
