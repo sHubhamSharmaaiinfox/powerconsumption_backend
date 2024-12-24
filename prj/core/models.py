@@ -151,3 +151,5 @@ class UPIID_data(models.Model):
     upi_id = models.CharField(max_length=255,default="")
     class Meta:
         db_table='upiid_data'           
+
+

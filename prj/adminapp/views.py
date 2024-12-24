@@ -226,7 +226,7 @@ class VerifiedUsers(APIView):
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Fetch all verified users
-        verified_users = User.objects.filter(status="1")
+        verified_users = User.objects.filter(status="1",role="user")
 
         user_data= UserSerial(verified_users,many=True).data
         return Response(
@@ -255,7 +255,7 @@ class UnverifiedUsers(APIView):
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Fetch all unverified users
-        unverified_users = User.objects.filter(status="0")
+        unverified_users = User.objects.filter(status="0",role="user")
 
         # Serialize user data
         user_data = UserSerial(unverified_users,many=True).data
@@ -748,14 +748,16 @@ class UpdatePaymentStatus(APIView):
         payment_id = request.data.get('id')
         status_=request.data.get("status")
 
-        user_membership = UserMemberships.objects.get(user_id = usr.id,status = '1')
-        user_membership.status='1'
-        user_membership.save()
+
+        
         print(payment_id,status_)        
         if not payment_id:
             return Response({"status": False, "message": "Payment ID is required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             payment = Payment.objects.get(id=payment_id)
+            user_membership = UserMemberships.objects.get(user_id = payment.user_id.id,status = '0')
+            user_membership.status='1'
+            user_membership.save()
         except Payment.DoesNotExist:
             return Response({"status": False, "message": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1048,10 +1050,10 @@ class GetUserCount(APIView):
         except User.DoesNotExist:
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         try:
-            active_user=User.objects.filter(status='1').count()
-            inactive_user=User.objects.filter(status='0').count()
-            total_user = User.objects.all().count()
-            total_subscription= UserMemberships.objects.all().count()
+            active_user=User.objects.filter(status='1',role="user").count()
+            inactive_user=User.objects.filter(status='0',role="user").count()
+            total_user = User.objects.filter(role="user").count()
+            total_subscription= UserMemberships.objects.filter(status="1").count()
             total_amount = sum([float(i.amount) for i in UserMemberships.objects.all()])
             total_meter = UserMeters.objects.all().count()
             current_month = now().month
@@ -1275,7 +1277,7 @@ class UserCountByMonthAPIView(APIView):
 
             # Cast 'created_at' (CharField) to DateTimeField and group by month
             user_counts = (
-                User.objects.annotate(
+                User.objects.filter(role='user').annotate(
                     created_at_datetime=Cast('created_at', output_field=DateTimeField())  # Cast to DateTimeField
                 )
                 .annotate(month=TruncMonth('created_at_datetime'))  # Truncate to month
@@ -1511,3 +1513,5 @@ class PaymentNotifications(APIView):
         data = Payment.objects.filter(status = '0')
         data = PaymentSerializer(data,many=True).data
         return Response({"status":True,"message":"Pending Payments","data":data[-7:]},status=status.HTTP_200_OK)
+
+

@@ -566,7 +566,7 @@ class GetDevices(APIView):
         
         try:
             user_data = UserMemberships.objects.get(user_id = usr.id,status='1')
-            meter_data= UserMeters.objects.filter(member_id = user_data.id)
+            meter_data= UserMeters.objects.filter(member_id = user_data.id,status='1')
             serial = UserMeterSerial(meter_data,many=True).data
         except:
             serial = []

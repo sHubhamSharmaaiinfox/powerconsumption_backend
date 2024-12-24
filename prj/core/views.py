@@ -157,17 +157,19 @@ class CreateUserMeterReadings(APIView):
 
 
 
-
-# class FixTimeAPI(APIView):
-#     def get(self,request):
-#         data = UserMeterReadings.objects.all()
-#         df= pd.read_csv(r"C:\Users\NAVNEET\Downloads\multiple_readings_per_meter (1).csv")
-#         time_stamp=df['Timestamp']
-#         for i in range(1,len(time_stamp)):
-#             ob=UserMeterReadings.objects.get(id=i)
-#             datetime_obj = datetime.strptime(time_stamp[i], "%d-%m-%Y %H:%M")
-#             ob.datetime=datetime_obj
-#             ob.save()
-#         return Response({"status":True,"message":"success"},status=status.HTTP_200_OK)
-
-
+class UserMeterDataCreation(APIView):
+    def post(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            meter = UserMeters.objects.get(id=d.get("meter_id"))
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        data = request.data
+        data['meter_id']= d.get('meter_id')
+        serial = UserMeterReadingsSerial(data=data)
+        if serial.is_valid():
+            serial.save()
+            return Response({'status':True,'message':'record created successfully'},status=status.HTTP_201_CREATED)
+        else:
+            return Response({'status':False,'message':serial.errors},status=status.HTTP_200_OK)
