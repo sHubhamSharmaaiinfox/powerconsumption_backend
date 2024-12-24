@@ -44,7 +44,7 @@ urlpatterns = [
    path("admin-profile",views.AdminProfile.as_view()),
    path('profile-update',views.ChangeProfile.as_view()),
    path('change-password',views.ChangePassword.as_view()),
-   #  path('getuserdetail',views.UserDetailApi.as_view()),
+   
    
  
 ]

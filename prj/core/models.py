@@ -78,6 +78,7 @@ class Alerts(models.Model):
     description = models.TextField()
     status = models.CharField(max_length=200)
     level = models.CharField(max_length=200)
+    created_at = models.DateTimeField(default=datetime.now())
 
     class Meta:
         db_table = 'alerts'

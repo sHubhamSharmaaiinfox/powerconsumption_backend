@@ -231,7 +231,7 @@ class AltersAPI(APIView):
         alertsdata=Alerts.objects.filter(meter_id__in = meter_id)
         serial = AlertsSerial(alertsdata,many=True).data
         return Response(
-            {"status":True,"data":serial[:7]},
+            {"status":True,"data":serial[-7:]},
             status=status.HTTP_200_OK
         )
 

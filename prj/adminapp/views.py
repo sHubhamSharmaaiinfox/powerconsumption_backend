@@ -909,11 +909,15 @@ class Detailuser(APIView):
         try:
             userdetail=User.objects.get(id=id)
            
-            plan_name1=UserMemberships.objects.get(user_id=id)
-            plan_name=plan_name1.plan_id.name
-            print("plan name",plan_name1.id)
-            metercount = len(UserMeters.objects.filter(member_id=plan_name1.id))
-            print("meeterr",metercount)
+            plan_name1=UserMemberships.objects.filter(user_id=id,status='1')
+            if len(plan_name1) >0:
+                
+                plan_name=plan_name1[0].plan_id.name
+            
+                metercount = len(UserMeters.objects.filter(member_id=plan_name1[0].id))
+            else:
+                plan_name = None
+                metercount = 0
             userdetailser=UserSerial(userdetail).data
             data = {"userdata":userdetailser,"plan_name":plan_name,"meter_count":metercount}
             return Response({"status":True,"message":"User Detail data fetched","data":data},status=status.HTTP_200_OK)
@@ -1381,4 +1385,3 @@ class ChangePassword(APIView):
             },
             status=status.HTTP_400_BAD_REQUEST)
         
-
