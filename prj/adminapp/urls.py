@@ -46,5 +46,6 @@ urlpatterns = [
    path('change-password',views.ChangePassword.as_view()),
    path('meter-chart-daily',views.MeterChartDaily.as_view()),
    path('meter-chart',views.MeterChart.as_view()),
-   path("meter-consumption-logs",views.MeterConsumptionLogs.as_view())
+   path("meter-consumption-logs",views.MeterConsumptionLogs.as_view()),
+   path('payment-notifications',views.PaymentNotifications.as_view())
 ]

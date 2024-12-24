@@ -22,7 +22,7 @@ from django.db.models import Func
 from collections import defaultdict
 
 
-from django.db.models.functions import Cast, TruncMonth
+from django.db.models.functions import Cast, TruncMonth, TruncHour
 from django.db.models import Count, DateTimeField
 
 
@@ -77,7 +77,7 @@ class CreateUser(APIView):
                                    )
             
             # Send email verification
-            send_email_verification(email, token)
+            #send_email_verification(email, token)
 
 
             return Response({"status": True, "message": "Verify your email"}, status=status.HTTP_200_OK)
@@ -904,8 +904,8 @@ class MeterChart(APIView):
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
         id_ = data.get('id')
         year = now().year
-        members_id = [i.id for i in UserMemberships.objects.filter(user_id=usr.id)]
-        meter_id = [i for i in UserMeters.objects.filter(member_id__in = members_id) if i.id==int(id_)]
+
+        meter_id = [i for i in UserMeters.objects.filter(id = id_) ]
         records = UserMeterReadings.objects.filter(
                 meter_id__in=meter_id,
                 datetime__year=year
@@ -939,10 +939,10 @@ class MeterConsumptionLogs(APIView):
         except:
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
         id_ = data.get('id')
-        members_id = [i.id for i in UserMemberships.objects.filter(user_id=usr.id)]
-        meter_id = [i for i in UserMeters.objects.filter(member_id__in=members_id) if i.id == int(id_)]
-        data  = UserMeterReadings.objects.filter(meter_id__in = meter_id)
-
+        # members_id = [i.id for i in UserMemberships.objects.filter(user_id=usr.id)]
+        # meter_id = [i for i in UserMeters.objects.filter(member_id__in=members_id) if i.id == int(id_)]
+        data  = UserMeterReadings.objects.filter(meter_id = id_)
+        print(data)
         serial = UserMeterReadingsSerial(data,many=True).data
 
         return Response(
@@ -951,6 +951,10 @@ class MeterConsumptionLogs(APIView):
             "data":serial},
             status=status.HTTP_200_OK 
         )
+
+
+
+
 
 
 
@@ -966,8 +970,7 @@ class MeterChartDaily(APIView):
         except:
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
         id_ = data.get('id')
-        members_id = [i.id for i in UserMemberships.objects.filter(user_id=usr.id)]
-        meter_id = [i for i in UserMeters.objects.filter(member_id__in=members_id) if i.id == int(id_)]
+        meter_id = [i for i in UserMeters.objects.filter(member_id=id_)]
         current_date = now().date()
         records = UserMeterReadings.objects.filter(
             meter_id__in=meter_id,
@@ -988,6 +991,10 @@ class MeterChartDaily(APIView):
             "data": [{"data": consumption_data, "name": "Today's Consumption"}]
         }, status=status.HTTP_200_OK)
     
+
+
+
+
 class Detailuser(APIView):
     def post(self,request):
         token = request.META.get('HTTP_AUTHORIZATION')
@@ -1480,3 +1487,23 @@ class ChangePassword(APIView):
             },
             status=status.HTTP_400_BAD_REQUEST)
         
+
+class PaymentNotifications(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = Payment.objects.filter(status = '0')
+        data = PaymentSerializer(data,many=True).data
+        return Response({"status":True,"message":"Pending Payments","data":data[-7:]},status=status.HTTP_200_OK)
