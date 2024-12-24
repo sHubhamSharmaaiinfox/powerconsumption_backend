@@ -889,9 +889,104 @@ class MeterStatus(APIView):
             meter.save()
         except:
             return Response({"status":False,"message":"Meter Id Not Found"},status=status.HTTP_400_BAD_REQUEST)
-    
-        
         return Response({"status":True,"message":"success"},status=status.HTTP_200_OK)
+
+class MeterChart(APIView):
+    def post(self,request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='admin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        id_ = data.get('id')
+        year = now().year
+        members_id = [i.id for i in UserMemberships.objects.filter(user_id=usr.id)]
+        meter_id = [i for i in UserMeters.objects.filter(member_id__in = members_id) if i.id==int(id_)]
+        records = UserMeterReadings.objects.filter(
+                meter_id__in=meter_id,
+                datetime__year=year
+            ).annotate(month=TruncMonth('datetime')) \
+             .values('month') \
+             .annotate(total_power=Sum('power')) \
+             .order_by('month')
+        monthly_data = {record["month"].month: record["total_power"] for record in records}
+        consumption_data = [
+                monthly_data.get(month, 0)  
+                for month in range(1, 13)  
+            ]
+        print(consumption_data)
+        return Response({
+            "status":True,
+            "data":[{"data":consumption_data,"name":"This Month"}]
+        },status=status.HTTP_200_OK
+        )
+
+
+
+class MeterConsumptionLogs(APIView):
+    def post(self, request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        id_ = data.get('id')
+        members_id = [i.id for i in UserMemberships.objects.filter(user_id=usr.id)]
+        meter_id = [i for i in UserMeters.objects.filter(member_id__in=members_id) if i.id == int(id_)]
+        data  = UserMeterReadings.objects.filter(meter_id__in = meter_id)
+
+        serial = UserMeterReadingsSerial(data,many=True).data
+
+        return Response(
+            {"status":True,
+            "message":"success",
+            "data":serial},
+            status=status.HTTP_200_OK 
+        )
+
+
+
+class MeterChartDaily(APIView):
+    def post(self, request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        id_ = data.get('id')
+        members_id = [i.id for i in UserMemberships.objects.filter(user_id=usr.id)]
+        meter_id = [i for i in UserMeters.objects.filter(member_id__in=members_id) if i.id == int(id_)]
+        current_date = now().date()
+        records = UserMeterReadings.objects.filter(
+            meter_id__in=meter_id,
+            datetime__date=current_date 
+        ).annotate(hour=TruncHour('datetime')) \
+         .values('hour') \
+         .annotate(total_power=Sum('power')) \
+         .order_by('hour')
+
+        hourly_data = {record["hour"].hour: record["total_power"] for record in records}
+        consumption_data = [
+            hourly_data.get(hour, 0)  
+            for hour in range(24)  
+        ]
+
+        return Response({
+            "status": True,
+            "data": [{"data": consumption_data, "name": "Today's Consumption"}]
+        }, status=status.HTTP_200_OK)
     
 class Detailuser(APIView):
     def post(self,request):

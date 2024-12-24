@@ -44,7 +44,7 @@ urlpatterns = [
    path("admin-profile",views.AdminProfile.as_view()),
    path('profile-update',views.ChangeProfile.as_view()),
    path('change-password',views.ChangePassword.as_view()),
-   
-   
- 
+   path('meter-chart-daily',views.MeterChartDaily.as_view()),
+   path('meter-chart',views.MeterChart.as_view()),
+   path("meter-consumption-logs",views.MeterConsumptionLogs.as_view())
 ]
