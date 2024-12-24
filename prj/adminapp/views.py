@@ -747,6 +747,10 @@ class UpdatePaymentStatus(APIView):
         # Get the payment ID and new status from the request
         payment_id = request.data.get('id')
         status_=request.data.get("status")
+
+        user_membership = UserMemberships.objects.get(user_id = usr.id,status = '1')
+        user_membership.status='1'
+        user_membership.save()
         print(payment_id,status_)        
         if not payment_id:
             return Response({"status": False, "message": "Payment ID is required"}, status=status.HTTP_400_BAD_REQUEST)

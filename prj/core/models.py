@@ -130,7 +130,7 @@ class WsGroupNames(models.Model):
 
 
 
-
+#Usermembership instance in payment table
 class Payment(models.Model):
     user_id=models.ForeignKey("core.User", db_column='user_id', on_delete=models.CASCADE)
     amount= models.CharField(max_length=255, default=100)
@@ -141,6 +141,9 @@ class Payment(models.Model):
     created_at = models.CharField(max_length=255,default=datetime.now())
     class Meta:
         db_table='payment'
+
+
+
 
 
 class UPIID_data(models.Model):
