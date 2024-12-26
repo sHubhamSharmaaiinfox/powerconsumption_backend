@@ -756,7 +756,7 @@ class UpdatePaymentStatus(APIView):
         try:
             payment = Payment.objects.get(id=payment_id)
             user_membership = UserMemberships.objects.get(user_id = payment.user_id.id,status = '0')
-            user_membership.status='1'
+            user_membership.status=status_
             user_membership.save()
         except Payment.DoesNotExist:
             return Response({"status": False, "message": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
