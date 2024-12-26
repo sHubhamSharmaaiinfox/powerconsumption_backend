@@ -32,9 +32,9 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 CORS_ORIGIN_ALLOW_ALL = True
-'''CORS_ORIGIN_WHITELIST = (
-  'http://localhost:8000',
-)'''
+CORS_ORIGIN_WHITELIST = [
+  'https://power-consumption.vercel.app',
+]
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -71,7 +71,8 @@ INSTALLED_APPS = [
     "core",
     "rest_framework",
     "userapp",
-    "adminapp"
+    "adminapp",
+    'corsheaders',
 ]
 
 
