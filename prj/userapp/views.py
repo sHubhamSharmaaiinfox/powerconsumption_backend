@@ -551,6 +551,8 @@ class IsMember(APIView):
             return Response({"status":True,"data":"0"},status=status.HTTP_200_OK)
         
 
+
+
 class GetDevices(APIView):
     def get(self,request):
         token = request.META.get('HTTP_AUTHORIZATION')
@@ -561,11 +563,18 @@ class GetDevices(APIView):
                 return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
         except:
             return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
-        user_data = UserMemberships.objects.get(user_id = usr.id,status='1')
-        meter_data= UserMeters.objects.filter(member_id = user_data.id)
-        serial = UserMeterSerial(meter_data,many=True).data
+        
+        try:
+            user_data = UserMemberships.objects.get(user_id = usr.id,status='1')
+            meter_data= UserMeters.objects.filter(member_id = user_data.id,status='1')
+            serial = UserMeterSerial(meter_data,many=True).data
+        except:
+            serial = []
         return  Response({"status":True,"Message":"Devices Data","data":serial},status=status.HTTP_200_OK)
     
+
+
+
 class UserProfile(APIView):
     def get(self, request):
         token = request.META.get('HTTP_AUTHORIZATION')
@@ -587,6 +596,9 @@ class UserProfile(APIView):
             {"status":True,"message":"User Profile","data":data},status=status.HTTP_200_OK
         )
     
+
+
+
 class ChangeUserPassword(APIView):
     def post(self,request):
         token = request.META.get('HTTP_AUTHORIZATION')
@@ -616,6 +628,9 @@ class ChangeUserPassword(APIView):
             status=status.HTTP_400_BAD_REQUEST)
         
 
+
+
+
 class ChangeUserProfile(APIView):
     def post(self,request):
         token = request.META.get('HTTP_AUTHORIZATION')
@@ -638,7 +653,9 @@ class ChangeUserProfile(APIView):
             return Response({"status":True,"message":"Profile update successfully"},status=status.HTTP_200_OK)
         else:
             return Response({'status':False,'message':serial.errors},status=status.HTTP_400_BAD_REQUEST)
-        
+
+
+
 
 class AmpReadingsApi(APIView):
     def get(self,request):
@@ -661,6 +678,8 @@ class AmpReadingsApi(APIView):
         data = UserMeterReadingsSerial(data,many=True).data
         return Response({"status":True,"message":"Amp and volt readings","data":data},status=status.HTTP_200_OK)
         
+
+
         
 class MembershipStatus(APIView):
     def get(self,request):
@@ -670,14 +689,12 @@ class MembershipStatus(APIView):
             usr = User.objects.get(email=d.get("email"))
             if d.get('method') != "verified" or usr.role != 'user':
                 return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
-       
         except jwt.ExpiredSignatureError:
             return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
         except jwt.InvalidTokenError:
             return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
         except User.DoesNotExist:
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        
         try:
             data = UserMemberships.objects.get(user_id = usr.id,status='1')
             data = UserMembershipsSerial(data).data
