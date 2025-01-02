@@ -17,5 +17,9 @@ urlpatterns = [
    path("update-membership", views.UpdateMembership.as_view()),
    path("get-membership", views.GetAllMemberships.as_view()),
    path("membership-status",views.UpdateMembershipStatus.as_view()),
-   path('dash-cards',views.DashCards.as_view())
+   path('dash-cards',views.DashCards.as_view()),
+   path('admin-package',views.AdminPackagesApi.as_view()),
+   path('user-count-by-month',views.UserCountByMonth.as_view()),
+   path('admin-count-by-month',views.AdminCountByMonth.as_view()),
+   path('subscription-amount-by-month',views.SubscribersCountByMonth.as_view())
 ]

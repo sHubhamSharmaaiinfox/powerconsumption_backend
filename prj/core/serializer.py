@@ -47,22 +47,40 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = '__all__'
 
+
+
 class AlertsSerial(serializers.ModelSerializer):
     class Meta:
         model= Alerts
         fields = '__all__'
+
+
 
 class UserMeterSerial(serializers.ModelSerializer):
     class Meta:
         model = UserMeters
         fields = '__all__'
 
+
 class UPIID_dataSerial(serializers.ModelSerializer):
     class Meta:
         model = UPIID_data
         fields = "__all__"
 
+
+
 class UserLinkedSerial(serializers.ModelSerializer):
     class Meta:
         model = UserLinked
+        fields = "__all__"
+
+
+class PackagesSerial(serializers.ModelSerializer):
+    class Meta:
+        model = Packages
+        fields = "__all__"
+
+class AdminMembershipSerial(serializers.ModelSerializer):
+    class Meta:
+        model = AdminMembership
         fields = "__all__"

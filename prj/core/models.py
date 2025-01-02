@@ -24,6 +24,20 @@ class User(AbstractUser):
 
 
 
+class Packages(models.Model):
+    name= models.CharField(max_length=250)
+    amount = models.CharField(max_length=250)
+    plan_period=models.CharField(max_length=100,null=True)
+    status=models.CharField(max_length=200,default='1')
+    limit = models.CharField(max_length=200)
+    updated_at = models.CharField(max_length=200,default=datetime.utcnow())
+    created_at = models.CharField(max_length=200,default=datetime.utcnow())
+    class Meta:
+        db_table='packages'
+
+
+
+
 class Memberships(models.Model):
     name= models.CharField(max_length=250)
     amount = models.CharField(max_length=250)
@@ -46,6 +60,19 @@ class UserMemberships(models.Model):
     expire_date = models.CharField(max_length=250,null=True)
     class Meta:
         db_table='usermemberships'
+
+
+
+class AdminMembership(models.Model):
+    user_id=models.ForeignKey("core.User", db_column='user_id', on_delete=models.CASCADE)
+    plan_id=models.ForeignKey("core.Packages", db_column='plan_id', on_delete=models.CASCADE)
+    status=models.CharField(max_length=200,default='1')
+    date=models.CharField(max_length=200,default=datetime.utcnow())
+    amount=models.CharField(max_length=250,default=0)
+    expire_date = models.CharField(max_length=250,null=True)
+    class Meta:
+        db_table='adminmemberships'
+
 
 
 class UserMeters(models.Model):

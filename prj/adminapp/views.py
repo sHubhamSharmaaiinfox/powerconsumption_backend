@@ -334,7 +334,7 @@ class CreateEmailSender(APIView):
             if field not in request.data:
                 return Response({"status": False, "message": f"{field} is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create a new EmailSender record using the provided data
+        
         email_config = EmailSender(
             EMAIL_BACKEND=request.data.get('EMAIL_BACKEND'),
             EMAIL_HOST=request.data.get('EMAIL_HOST'),
@@ -343,7 +343,7 @@ class CreateEmailSender(APIView):
             DEFAULT_FROM_EMAIL=request.data.get('DEFAULT_FROM_EMAIL')
         )
         
-        # Save the new email configuration to the database
+        
         email_config.save()
 
         return Response({"status": True, "message": "Email configuration created successfully."}, status=status.HTTP_201_CREATED)

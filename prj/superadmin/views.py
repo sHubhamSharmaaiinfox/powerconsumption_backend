@@ -24,6 +24,7 @@ from django.utils.timezone import now,make_aware
 from django.db.models.functions import TruncMonth,TruncHour
 from django.db.models.functions import Cast, TruncMonth
 from django.db.models import Count, DateTimeField
+from dateutil.relativedelta import relativedelta
 
 
 class ProfileApi(APIView):
@@ -70,10 +71,9 @@ class ChangeProfile(APIView):
         
 
 
-class ChangePassword(APIView):
-    def post(self,request):
+class AdminPackagesApi(APIView):
+    def get(self,request):
         token = request.META.get('HTTP_AUTHORIZATION')
-        data = request.data
         try:
             d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
             usr = User.objects.get(email=d.get("email"))
@@ -86,7 +86,26 @@ class ChangePassword(APIView):
             return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
         except User.DoesNotExist:
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        
+     
+        data = [{"username":i.user_id.username,"status":i.status,"date":i.date,"expire_date":i.expire_date,"amount":i.amount,"plan_name":i.plan_id.name} for i in AdminMembership.objects.all()]
+        return Response({"status":True,"message":"Success","data":data},status=status.HTTP_200_OK)
+
+
+class ChangePassword(APIView):
+    def post(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        data = request.data
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'superadmin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         if data.get("password") == data.get('confirm_password'):
             print(usr)
             usr.password = make_password(data.get('password'))
@@ -180,7 +199,9 @@ class CreateAdmin(APIView):
             print(message, "--------------------------------------------")
             return Response({"status": False, "message": message}, status=status.HTTP_400_BAD_REQUEST)
         if password==cpassword:      
-            User.objects.create(username=username,password=make_password(password),first_name=first_name,email=email,last_name=last_name,verified_at=True,role='admin') 
+            us = User.objects.create(username=username,password=make_password(password),first_name=first_name,email=email,last_name=last_name,verified_at=True,role='admin')
+            plan_id = Packages.objects.get(id = 1)
+            AdminMembership.objects.create(user_id=us,plan_id=plan_id,amount = plan_id.amount,expire_date=datetime.now()+relativedelta(months=int(plan_id.plan_period)))
             payload_ = {'email': email,"method":"verified", 'exp': datetime.utcnow() + timedelta(minutes=5)}
             token = jwt.encode(payload=payload_,
                                    key=KEYS
@@ -241,11 +262,8 @@ class AdminStatus(APIView):
     def post(self, request):
         token = request.META.get('HTTP_AUTHORIZATION')  
         try:
-            
             d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
             usr = User.objects.get(email=d.get("email"))
-
-            
             if d.get('method') != "verified" or usr.role != 'superadmin':
                 return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
         except jwt.ExpiredSignatureError:
@@ -255,8 +273,6 @@ class AdminStatus(APIView):
         except User.DoesNotExist:
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         user_id = request.data.get('id')
-        
-
         if user_id is None :
             return Response(
                 {"status": False, "message": "User id required"},
@@ -350,17 +366,13 @@ class CreateMembership(APIView):
         except jwt.InvalidTokenError:
             return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
         except User.DoesNotExist:
-            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND) 
         if 'created_at' not in request.data:
             request.data['created_at'] = datetime.utcnow().isoformat()  
         if 'updated_at' not in request.data:
             request.data['updated_at'] = datetime.utcnow().isoformat()  
-
-        
-        serializer = MembershipsSerial(data=request.data)
+        serializer = PackagesSerial(data=request.data)
         if serializer.is_valid():
-            
             serializer.save()
             return Response({"status": True, "message": "Membership created successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
         else:
@@ -390,11 +402,11 @@ class UpdateMembership(APIView):
             return Response({"status": False, "message": "Membership ID is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            membership = Memberships.objects.get(id=membership_id)
+            membership = Packages.objects.get(id=membership_id)
         except Memberships.DoesNotExist:
             return Response({"status": False, "message": "Membership not found"}, status=status.HTTP_404_NOT_FOUND)
         request.data['updated_at'] = datetime.utcnow().isoformat()  
-        serializer = MembershipsSerial(membership, data=request.data, partial=True)  
+        serializer = PackagesSerial(membership, data=request.data, partial=True)  
         if serializer.is_valid():
             serializer.save()
             return Response({"status": True, "message": "Membership updated successfully", "data": serializer.data}, status=status.HTTP_200_OK)
@@ -418,8 +430,8 @@ class GetAllMemberships(APIView):
         except User.DoesNotExist:
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        memberships = Memberships.objects.all()
-        serializer = MembershipsSerial(memberships, many=True)
+        memberships = Packages.objects.all()
+        serializer = PackagesSerial(memberships, many=True)
         return Response({"status": True, "message": "Memberships fetched successfully", "data": serializer.data}, status=status.HTTP_200_OK)
 
 
@@ -468,7 +480,7 @@ class UpdateMembershipStatus(APIView):
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         id = request.data.get('id')  
         try:
-            membership = Memberships.objects.get(id=id)
+            membership = Packages.objects.get(id=id)
         except Memberships.DoesNotExist:
             return Response({"status": False, "message": "Membership not found"}, status=status.HTTP_404_NOT_FOUND)
         if membership.status == '1':
@@ -511,8 +523,8 @@ class DashCards(APIView):
 
         # subscribers
 
-        total_subscribers = len(UserMemberships.objects.exclude(status='0'))
-        subs_amount = sum([float(i.amount) for i in UserMemberships.objects.exclude(status='0')])
+        total_subscribers = len(AdminMembership.objects.exclude(status='0'))
+        subs_amount = sum([float(i.amount) for i in AdminMembership.objects.exclude(status='0')])
 
         # Total Devices
 
@@ -533,4 +545,154 @@ class DashCards(APIView):
 
         return Response({"status":True,"message":"Dashboard card data","data":data},status=status.HTTP_200_OK)
 
+
+class UserCountByMonth(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'superadmin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            current_year = datetime.now().year
+            print(current_year)
+            all_months = [
+                datetime(current_year, month, 1) for month in range(1, 13)
+            ]
+
+            user_counts = (
+                User.objects.filter(role='user').annotate(
+                    created_at_datetime=Cast('created_at', output_field=DateTimeField())  
+                )
+                .annotate(month=TruncMonth('created_at_datetime'))  
+                .filter(created_at_datetime__year=current_year)  
+                .values('month')
+                .annotate(count=Count('id'))  
+                .order_by('month')
+            )
+
+            user_count_dict = {
+                entry['month'].replace(tzinfo=None): entry['count'] 
+                for entry in user_counts if entry['month']
+            }
+            chart_data = [{
+                "x": month.strftime('%B %Y')[:3] ,  
+                "y": 
+                    user_count_dict.get(month.replace(tzinfo=None), 0)
+                
+            } for month in all_months
+            ]
+            print("user chart data",chart_data)
+            return Response({
+                "status": True,
+                "message": "User Count By Month fetched",
+                "data": [{"name":"users","data":chart_data}]
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "status": False,
+                "message": "User Count By Month not fetched",
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND)
+
+class AdminCountByMonth(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'superadmin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            current_year = datetime.now().year
+            print(current_year)
+            all_months = [
+                datetime(current_year, month, 1) for month in range(1, 13)
+            ]
+
+            user_counts = (
+                User.objects.filter(role='admin').annotate(
+                    created_at_datetime=Cast('created_at', output_field=DateTimeField())  
+                )
+                .annotate(month=TruncMonth('created_at_datetime'))  
+                .filter(created_at_datetime__year=current_year)  
+                .values('month')
+                .annotate(count=Count('id'))  
+                .order_by('month')
+            )
+
+            user_count_dict = {
+                entry['month'].replace(tzinfo=None): entry['count'] 
+                for entry in user_counts if entry['month']
+            }
+            chart_data = [{
+                "x": month.strftime('%B %Y')[:3] ,  
+                "y": 
+                    user_count_dict.get(month.replace(tzinfo=None), 0)
+                
+            } for month in all_months
+            ]
+            print("user chart data",chart_data)
+            return Response({
+                "status": True,
+                "message": "User Count By Month fetched",
+                "data": [{"name":"users","data":chart_data}]
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "status": False,
+                "message": "User Count By Month not fetched",
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class SubscribersCountByMonth(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'superadmin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        current_year = datetime.now().year
+        data = AdminMembership.objects.all()
+        data = AdminMembershipSerial(data,many=True).data
+        month_totals = defaultdict(int)
+        for entry in data:
+            try:
+                date = datetime.strptime(entry['date'], '%Y-%m-%d %H:%M:%S.%f')
+                month = date.month
+                month_totals[month] += float(entry['amount'])
+            except ValueError:
+                continue
+        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        result = [{'x': months[i], 'y': month_totals[i + 1]} for i in range(12)]
+        return Response({"status":True,"message":"success","data":result},status=status.HTTP_200_OK)
 
