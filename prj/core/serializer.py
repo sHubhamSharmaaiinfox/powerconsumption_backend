@@ -14,15 +14,18 @@ class MembershipsSerial(serializers.ModelSerializer):
         model=Memberships
         fields='__all__'
 
+
 class UserMembershipsSerial(serializers.ModelSerializer):
     class Meta:
         model=UserMemberships
         fields='__all__'
 
+
 class MeterPowerConsumptionSerial(serializers.ModelSerializer):
     class Meta:
         model=MeterPowerConsumption
         fields='__all__'
+
 
 class TransactionsSerial(serializers.ModelSerializer):
     class Meta:
@@ -57,4 +60,9 @@ class UserMeterSerial(serializers.ModelSerializer):
 class UPIID_dataSerial(serializers.ModelSerializer):
     class Meta:
         model = UPIID_data
+        fields = "__all__"
+
+class UserLinkedSerial(serializers.ModelSerializer):
+    class Meta:
+        model = UserLinked
         fields = "__all__"

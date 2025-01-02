@@ -18,7 +18,6 @@ from .serializer import *
 import pandas as pd
 
 
-
 class LoginAPIView(APIView):
     def post(self, request):
         email = request.data.get('email')

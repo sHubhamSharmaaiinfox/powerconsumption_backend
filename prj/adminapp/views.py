@@ -19,9 +19,9 @@ from django.utils.timezone import now
 from django.db.models import Max, Sum ,F
 from django.db.models.functions import ExtractMonth
 from django.db.models import Func
-from collections import defaultdict
-
-
+from collections import defaultdict 
+from django.utils.timezone import now,make_aware
+from django.db.models.functions import TruncMonth,TruncHour
 from django.db.models.functions import Cast, TruncMonth
 from django.db.models import Count, DateTimeField
 
@@ -1374,41 +1374,29 @@ class deviceCountByMonthAPIView(APIView):
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         try:
             current_year = datetime.now().year
- 
-        
             all_months = [
                 datetime(current_year, month, 1) for month in range(1, 13)
             ]
- 
-            
             user_counts = (
             UserMeters.objects.annotate(
-                created_at_datetime=Cast('created_at', output_field=DateTimeField())  # Cast to DateTimeField
+                created_at_datetime=Cast('created_at', output_field=DateTimeField()) 
             )
-            .annotate(month=TruncMonth('created_at_datetime'))  # Truncate to month
-            .filter(created_at_datetime__year=current_year)  # Only consider current year
+            .annotate(month=TruncMonth('created_at_datetime'))  
+            .filter(created_at_datetime__year=current_year)  
             .values('month')
-            .annotate(count=Count('id'))  # Count users per month
+            .annotate(count=Count('id')) 
             .order_by('month')
         )
-         
- 
-            # Create a dictionary for user counts
             user_count_dict = {entry['month'].replace(tzinfo=None): entry['count'] for entry in user_counts if entry['month']}
-                
-           
- 
-            # Populate the counts for all months of the current year, setting 0 for missing months
             chart_data = [
                 {"x":month.strftime('%B %Y')[:3],"y":user_count_dict.get(month.replace(tzinfo=None), 0) } for month in all_months # Use 0 if no data
             ]
             print("chart_data",chart_data)
- 
- 
             return Response({"status":True,"message":"Device Count By Month count fetched","data":[{"name":"device counts","data":chart_data}]},status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": False, "message": "DeviceCountByMonthAPIView not Fetched"}, status=status.HTTP_404_NOT_FOUND)                
-        
+
+     
 class AdminProfile(APIView):
     def get(self, request):
         token = request.META.get('HTTP_AUTHORIZATION')

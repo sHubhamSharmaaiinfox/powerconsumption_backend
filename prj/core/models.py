@@ -17,6 +17,8 @@ class User(AbstractUser):
     remember_token=models.CharField(max_length=200,default='False')
     phone_no=models.CharField(max_length=200,null=True)
     activation_date=models.CharField(max_length=200,default='N/A')
+    refferal_code  = models.CharField(max_length = 200,default = '')
+    refferal_by  = models.CharField(max_length=200,default = '')
     class Meta:
         db_table='users'
 
@@ -148,3 +150,22 @@ class UPIID_data(models.Model):
     upi_id = models.CharField(max_length=255,default="")
     class Meta:
         db_table='upiid_data'           
+
+
+class Feedback(models.Model):
+    user_id=models.ForeignKey("core.User", db_column='user_id', on_delete=models.CASCADE)
+    feedback = models.TextField(verbose_name="Feedback")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Submitted At")
+    class Meta:
+        db_table ="feedback"
+
+
+
+
+class UserLinked(models.Model):
+    parent_id=models.ForeignKey("core.User", related_name='%(class)s_parent_id', on_delete=models.CASCADE)
+    child_id=models.ForeignKey("core.User",related_name='%(class)s_child_id', on_delete=models.CASCADE)
+    date=models.CharField(max_length=100,default=datetime.utcnow())
+    status=models.CharField(max_length=100,default='1')
+    class Meta:
+        db_table='user_linked'
