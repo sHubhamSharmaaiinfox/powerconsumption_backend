@@ -1,3 +1,5 @@
+import base64
+import os
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -16,6 +18,16 @@ import jwt
 FRONTEND_URL = getattr(settings, "FRONTEND_URL", None)
 from .serializer import *
 import pandas as pd
+from django.core.mail import EmailMessage
+
+
+
+def convert_image_to_base64(image_path):
+    """Convert image to base64 string."""
+    image_path = os.path.join(settings.BASE_DIR, 'static', 'images', image_path)
+    with open(image_path, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+    return f"data:image/png;base64,{encoded_string}"
 
 
 class LoginAPIView(APIView):
@@ -52,6 +64,49 @@ class LoginAPIView(APIView):
 
 
 class ForgotPasswordApi(APIView):
+    def generate_email_template(self, username,reset_url):
+        """Generate the HTML email template."""
+        base64_email_image = convert_image_to_base64('enerygy.png')
+        return f"""
+        <!doctype html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Password Reset</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" 
+                integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" 
+                crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" 
+                integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" 
+                crossorigin="anonymous">
+        </head>
+        <body>
+            <section style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+                <div class="container" style="box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px; padding: 25px; border-radius: 5px;">
+                    <div class="col-lg-12 d-flex justify-content-center align-items-center flex-column  main-con-top">
+                    <div class="col-lg-12 d-flex justify-content-center align-items-center flex-column  main-con-bottom">
+                        <img src="{base64_email_image}" class="img-fluid" alt="Email" style="margin-top: 10px; margin-bottom:20px; width:20%;">
+                        <h1 style="font-family: poppins;">Hi {username}!</h1>
+                        <p style="padding-top: 10px; margin-bottom: 0px; font-family: poppins;">Password Reset</p>
+                        <span style="padding-top: 10px; font-family: poppins; width: 60%; text-align: center; font-size: 14px;">
+                            Please create a strong and secure password for your account to complete the setup process. A strong password includes a mix of uppercase, lowercase, numbers, and special characters.
+                        </span>
+                        <a href="{reset_url}" style="margin-top: 20px; padding: 10px 20px; border: none; border-radius: 4px; background: #2D4AF1; color: white; font-family: Poppins, sans-serif; text-decoration: none; transition: box-shadow 0.5s ease-in-out;" 
+                            onmouseover="this.style.boxShadow='rgba(0, 0, 0, 0.25) 0px 54px 55px, rgba(0, 0, 0, 0.12) 0px -12px 30px, rgba(0, 0, 0, 0.12) 0px 4px 6px, rgba(0, 0, 0, 0.17) 0px 12px 13px, rgba(0, 0, 0, 0.09) 0px -3px 5px';" 
+                            onmouseout="this.style.boxShadow='none';">
+                            <i class="fa-regular fa-circle-check"></i> Reset Password
+                        </a>
+                        <span style="padding-top: 10px; font-family: poppins; width: 60%; text-align: center; font-size: 14px;">
+                            2025 - EMS. All Rights Reserved
+                        </span>
+                    </div>
+                </div>
+            </section>
+        </body>
+        </html>
+        """
+    
     def post(self,request,format=None):
         email = request.data.get('email')
         if not email:
@@ -64,7 +119,15 @@ class ForgotPasswordApi(APIView):
         token = jwt.encode(payload=payload_,
                                    key=KEYS
                                    )
-        url = f"{FRONTEND_URL}/reset-password?token={token}"                           
+        
+        subject = "Password Reset Request"
+        url = f"{FRONTEND_URL}/reset-password?token={token}" 
+        message = self.generate_email_template(user.username,url)
+
+        
+        email_message=EmailMessage(subject, message,settings.EMAIL_HOST_USER, to=[email])
+        email_message.content_subtype = "html"
+        email_message.send()
         return Response({"status":True,"message": "Password reset link sent to your email.",'Url':url}, status=status.HTTP_200_OK)
 
 
