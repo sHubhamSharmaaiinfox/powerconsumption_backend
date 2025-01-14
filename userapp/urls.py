@@ -26,5 +26,8 @@ urlpatterns = [
     path('all-alerts',views.AllAlters.as_view()),
     path('amp-volt-readings',views.AmpReadingsApi.as_view()),
     path('user-membership-status',views.MembershipStatus.as_view()),
-    path('add-feedback',views.AddFeedback.as_view())
+    path('add-feedback',views.AddFeedback.as_view()),
+    path('overall-power',views.OverallPower.as_view()),
+    path('kw-chart',views.Kwchart.as_view()),
+    path('meter-cards-data',views.MeterCardsData.as_view())
 ]                   

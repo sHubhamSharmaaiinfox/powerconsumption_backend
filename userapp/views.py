@@ -43,7 +43,12 @@ class MetersData(APIView):
         meter_readings =  UserMeterReadings.objects.filter(meter_id__in=meter_id)
         srl = UserMeterReadingsSerial(meter_readings,many=True).data
         total_active_power = sum([sum(list(float(j) for j in i.get('data').get("ActivePower_K_W").values())) for i in srl])
-        max_power_row = UserMeterReadings.objects.filter(meter_id__in=meter_id).order_by('-power').first().power
+        
+        try:
+            max_power_row = UserMeterReadings.objects.filter(meter_id__in=meter_id).order_by('-power').first().power
+        except:
+            max_power_row = 0
+
 
         current_date = now().date()
         current_month = now().month
@@ -64,7 +69,10 @@ class MetersData(APIView):
         if peak_power_this_month is None:
             peak_power_this_month=0
         # 5. All-Time Peak Power
-        all_time_peak_power = UserMeterReadings.objects.filter(meter_id__in=meter_id).aggregate(Max('power'))['power__max']
+        try:
+            all_time_peak_power = UserMeterReadings.objects.filter(meter_id__in=meter_id).aggregate(Max('power'))['power__max']
+        except:
+            all_time_peak_power= 0
         return Response(
             {"status":True,
             "Total_meters":len(meter_id),
@@ -72,11 +80,108 @@ class MetersData(APIView):
             'max_dropdown':max_power_row,
             'todays_power_consumed':todays_power_consumed,
             'monthly_power_consumed':monthly_power_consumed,
-            "peak_power_today":float(peak_power_today),
-            "peak_power_this_month":float(peak_power_this_month),
-            "all_time_peak_power":float(all_time_peak_power)
+            "peak_power_today":peak_power_today,
+            "peak_power_this_month":peak_power_this_month,
+            "all_time_peak_power":all_time_peak_power
             },status=status.HTTP_200_OK
             )
+
+class OverallPower(APIView):
+    def post(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        data = request.data 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='user':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        year = now().year
+        meter = UserMeters.objects.get(id=data.get('id'))
+        MeterData = UserMeterReadings.objects.filter(meter_id = meter.id)
+        kwh = sum([float(i.power) for i in MeterData])
+        kvah = sum([(float(i.get("data").get("ApparentPower_KVA").get("R"))+float(i.get("data").get("ApparentPower_KVA").get("Y"))+float(i.get("data").get("ApparentPower_KVA").get("B"))) for i in UserMeterReadingsSerial(MeterData,many=True).data])
+        try:
+            kvarh = round(abs(((kvah)**2 - (kwh)**2)**(1/2)),3)
+        except:
+            kvarh = 0
+       
+
+        # meter chart data
+        records = UserMeterReadings.objects.filter(
+                meter_id=meter.id,
+                datetime__year=year
+            ).annotate(month=TruncMonth('datetime')) \
+             .values('month') \
+             .annotate(total_power=Sum('power')) \
+             .order_by('month')
+        monthly_data = {record["month"].month: record["total_power"] for record in records}
+        consumption_data = [
+                monthly_data.get(month, 0)  
+                for month in range(1, 13)  
+            ]
+        return Response({
+            "status":True,
+            "kwh":kwh,
+            "kvah":kvah,
+            "kvarh":kvarh,
+            "chart_data":consumption_data
+        })
+
+
+
+class MeterCardsData(APIView):
+    def post(self,request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='user':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        meter_id = UserMeters.objects.get(id = data.get('id'))
+        data = UserMeterReadings.objects.filter(meter_id = meter_id)
+        data_ = data.last()
+        data_ = UserMeterReadingsSerial(data_).data
+
+        return Response({
+            "status":True,
+            "message":"success",
+            "data":data_
+        },status= status.HTTP_200_OK)
+
+
+class Kwchart(APIView):
+    def post(self,request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='user':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        meter_id = UserMeters.objects.get(id = data.get('id'))
+        data = UserMeterReadings.objects.filter(meter_id = meter_id)
+        data = data.last()
+        data = UserMeterReadingsSerial(data).data
+        if data is not None:
+            
+            data = [data.get("data").get("ActivePower_K_W").get("R"),data.get("data").get("ActivePower_K_W").get("Y"),data.get("data").get("ActivePower_K_W").get("B")]
+        else:
+            data = []
+        print(data)
+        #data = [sum([i.data.get("ActivePower_K_W").get("R") for i in data]),sum([i.data.get("ActivePower_K_W").get("Y") for i in data]),sum([i.data.get("ActivePower_K_W").get("B") for i in data])]
+        return Response({
+            "status":True,
+            "message":"success",
+            "data":data
+        },status=status.HTTP_200_OK)
+
 
 
 class AddFeedback(APIView):
