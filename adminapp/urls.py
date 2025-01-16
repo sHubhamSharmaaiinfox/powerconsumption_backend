@@ -54,5 +54,6 @@ urlpatterns = [
    path('membership-status',views.MembershipStatus.as_view()),
    path('getMembership',views.getMembership.as_view()),
    path("createqrcode",views.createqrcode.as_view()),
-   path('paymentreceived',views.Paymentreceived.as_view())
+   path('paymentreceived',views.Paymentreceived.as_view()),
+   path('get-feedback',views.GetFeedback.as_view())
 ]

@@ -62,7 +62,7 @@ class CreateUser(APIView):
 
         if password==cpassword:
             
-            us = User.objects.create(username=username,password=make_password(password),first_name=first_name,email=email,last_name=last_name,verified_at=True) 
+            us = User.objects.create(username=username,password=make_password(password),first_name=first_name,email=email,last_name=last_name,verified_at=True,refferal_code="EM"+str(int(time.time()))+"S") 
             UserLinked.objects.create(parent_id = usr,child_id = us)
             plan = Memberships.objects.get(name = 'free')
             UserMemberships.objects.create(user_id = us,plan_id = plan,amount = plan.amount,expire_date=datetime.now()+relativedelta(months=int(plan.plan_period)))
@@ -1669,3 +1669,24 @@ class PaymentNotifications(APIView):
         return Response({"status":True,"message":"Pending Payments","data":data[-7:]},status=status.HTTP_200_OK)
 
 
+
+class GetFeedback(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+       
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        usr_id =[i.child_id.id for i in UserLinked.objects.filter(parent_id=usr.id)]
+        feedback_data = Feedback.objects.filter(user_id__in = usr_id)
+        data = [{"email":i.user_id.email,"feedback":i.feedback,"created_at":i.created_at} for i in feedback_data]
+        return Response({"status":True,"message":"success","data":data},
+        status= status.HTTP_200_OK)
