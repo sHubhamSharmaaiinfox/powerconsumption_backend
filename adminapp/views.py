@@ -101,6 +101,9 @@ def send_email_verification(email, token):
 
 
 
+
+
+
 class VerifyAccount(APIView):
     def get(self, request, pk=None):
         token = request.query_params.get('token')  # Get the token from the URL
@@ -130,6 +133,70 @@ class VerifyAccount(APIView):
             return Response({"status": False, "message": "Error decoding token"}, status=status.HTTP_400_BAD_REQUEST)
         except User.DoesNotExist:
             return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class SignInUser(APIView):
+    def post(self,request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='admin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        id_ = data.get('id')
+        user = User.objects.get(id=id_)
+        payload_ = {'email': user.email,"role":user.role,'exp': datetime.utcnow() + timedelta(days=1),"method":"verified"}
+        token = jwt.encode(payload=payload_,
+                                   key=KEYS
+                                   )
+
+        return Response({"status":True,"message":"success","token":token,"role":user.role},status=status.HTTP_200_OK)
+
+
+
+
+class Membershipplan(APIView):
+    def get(self,request):
+        
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        packages=Packages.objects.filter(status="1")
+        packages=PackagesSerial(packages,many=True).data
+        return Response(
+            {"status":True,
+            "message":"success",
+            "data":packages},
+            status=status.HTTP_200_OK 
+        )
+
+class MembershipStatus(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION') 
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'admin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            data = UserMemberships.objects.get(user_id = usr.id,status='1')
+            data = UserMembershipsSerial(data).data
+            return Response({'status':True,'message':'user subscription data','data':data},status=status.HTTP_200_OK)
+        except:
+            return  Response({'Status':False,'message':'usermembership not found'},status=status.HTTP_400_BAD_REQUEST)
+
 
 
 

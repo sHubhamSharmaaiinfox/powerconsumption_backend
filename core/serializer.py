@@ -15,6 +15,8 @@ class MembershipsSerial(serializers.ModelSerializer):
         fields='__all__'
 
 
+
+
 class UserMembershipsSerial(serializers.ModelSerializer):
     class Meta:
         model=UserMemberships

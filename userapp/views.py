@@ -169,10 +169,10 @@ class Kwchart(APIView):
         data = UserMeterReadings.objects.filter(meter_id = meter_id)
         data = data.last()
         data = UserMeterReadingsSerial(data).data
-        if data is not None:
+        try:
             
             data = [data.get("data").get("ActivePower_K_W").get("R"),data.get("data").get("ActivePower_K_W").get("Y"),data.get("data").get("ActivePower_K_W").get("B")]
-        else:
+        except:
             data = []
         print(data)
         #data = [sum([i.data.get("ActivePower_K_W").get("R") for i in data]),sum([i.data.get("ActivePower_K_W").get("Y") for i in data]),sum([i.data.get("ActivePower_K_W").get("B") for i in data])]

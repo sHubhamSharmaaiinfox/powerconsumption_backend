@@ -48,6 +48,9 @@ urlpatterns = [
    path('meter-chart',views.MeterChart.as_view()),
    path("meter-consumption-logs",views.MeterConsumptionLogs.as_view()),
    path('payment-notifications',views.PaymentNotifications.as_view()),
-   path("metercreate",views.MeterCreate.as_view())
+   path("metercreate",views.MeterCreate.as_view()),
+   path('user-signin',views.SignInUser.as_view()),
+   path('membershipplan',views.Membershipplan.as_view()),
+   path('membership-status',views.MembershipStatus.as_view())
    
 ]
