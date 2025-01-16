@@ -9,9 +9,19 @@ KEY="SADFSyFSv-aD&WF9AWEgBLA1a323%423RB#JfVD@-2FeNEJtNVIER=EVER%n5"
 DEBUG = True
 ALLOWED_HOSTS = ['*']
 CORS_ORIGIN_ALLOW_ALL = True
+
+
+
+
+
 CORS_ORIGIN_WHITELIST = (
   'https://power-consumption.vercel.app',
 )
+
+
+
+
+
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -20,6 +30,11 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
+
+
+
+
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -31,6 +46,11 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+
+
+
+
 INSTALLED_APPS = [
     "daphne",
     'channels',
@@ -47,6 +67,11 @@ INSTALLED_APPS = [
     "corsheaders",
     "superadmin"
 ]
+
+
+
+
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -58,6 +83,11 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
 ]
+
+
+
+
+
 ROOT_URLCONF = "prj.urls"
 TEMPLATES = [
     {
@@ -74,12 +104,21 @@ TEMPLATES = [
         },
     },
 ]
+
+
+
+
+
 ASGI_APPLICATION = 'prj.asgi.application'
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
+
+
+
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -90,6 +129,10 @@ DATABASES = {
         'PORT':'3306'
     }
 }
+
+
+
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -104,6 +147,10 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+
+
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True

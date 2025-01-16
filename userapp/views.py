@@ -106,8 +106,6 @@ class OverallPower(APIView):
             kvarh = round(abs(((kvah)**2 - (kwh)**2)**(1/2)),3)
         except:
             kvarh = 0
-       
-
         # meter chart data
         records = UserMeterReadings.objects.filter(
                 meter_id=meter.id,

@@ -26,5 +26,9 @@ urlpatterns = [
    path('devices-by-month',views.DevicesByMonth.as_view()),
    path('admindetail',views.AdminDetail.as_view()),
    path('get-users-data',views.GetUsersData.as_view()),
-   #path('user-meter-details')
+   path("get-pending-payments",views.GetPendingPayment.as_view()),
+   path("update-payment",views.UpdatePaymentStatus.as_view()),
+   path('get-payment',views.GetPayment.as_view()),
+   path("get-qr-detail",views.GetQrUpi.as_view()),
+   path("createupiid",views.createqrupi.as_view())
 ]

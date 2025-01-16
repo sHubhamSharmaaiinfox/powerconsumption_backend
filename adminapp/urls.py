@@ -51,6 +51,8 @@ urlpatterns = [
    path("metercreate",views.MeterCreate.as_view()),
    path('user-signin',views.SignInUser.as_view()),
    path('membershipplan',views.Membershipplan.as_view()),
-   path('membership-status',views.MembershipStatus.as_view())
-   
+   path('membership-status',views.MembershipStatus.as_view()),
+   path('getMembership',views.getMembership.as_view()),
+   path("createqrcode",views.createqrcode.as_view()),
+   path('paymentreceived',views.Paymentreceived.as_view())
 ]

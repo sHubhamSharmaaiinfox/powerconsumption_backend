@@ -1,4 +1,6 @@
-{
+{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtZXRlcl9pZCI6MTQsImV4cCI6MTc2ODU2NDk1OX0.hs11qnDdqA7Aa9mLfUL1AhVqTfQFCxODIxnV7jVwb2E",
+"power":294.00,
+"data":{
     "Voltage_P_N": {
         "R_N": 215.0,
         "Y_N": 215.0,
@@ -54,5 +56,6 @@
         "R": 15.00,
         "Y": 36.00,
         "B": 25.00
+    }
     }
 }

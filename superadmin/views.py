@@ -789,3 +789,131 @@ class GetUsersData(APIView):
         usrsdata = [i.child_id for i in UserLinked.objects.filter(parent_id= id)]
         data = UserSerial(usrsdata,many=True).data
         return Response({"status":True,"message":"success","data":data},status=status.HTTP_200_OK) 
+
+class GetPendingPayment(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='superadmin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        data = Payment.objects.filter(status="0")
+        print(data) 
+        data=[{"id":i.id   ,"username":User.objects.get(id=i.user_id.id).username,"email":User.objects.get(id=i.user_id.id).email,"currency":i.currrency,"status":i.status,"comment":i.comment,"image":i.image,"created_at":i.created_at,"amount":i.amount} for i in data if i.user_id.role=='admin']
+        print(data)
+        return Response({"status": True, "message": "Payments retrieved successfully", "data": data},status=status.HTTP_200_OK)
+
+
+
+class UpdatePaymentStatus(APIView):
+    def post(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'superadmin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get the payment ID and new status from the request
+        payment_id = request.data.get('id')
+        status_=request.data.get("status")
+
+
+        
+        print(payment_id,status_)        
+        if not payment_id:
+            return Response({"status": False, "message": "Payment ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            payment = Payment.objects.get(id=payment_id)
+            user_membership = UserMemberships.objects.get(user_id = payment.user_id.id,status = '0')
+            user_membership.status=status_
+            user_membership.save()
+        except Payment.DoesNotExist:
+            return Response({"status": False, "message": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        payment.status = status_        
+        payment.save()
+
+        return Response({"status": True, "message": "Payment status updated successfully", "data": {"id": payment.id, "status": payment.status}}, status=status.HTTP_200_OK)
+
+
+
+class GetPayment(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email = d.get("email"))
+            if d.get('method')!="verified" or usr.role!='superadmin':
+                return Response({"status":False,"message":"Unauthorized"},status=status.HTTP_401_UNAUTHORIZED)  
+        except:
+            return Response({'status': False, 'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        data = Payment.objects.all()
+        data=[{"username":User.objects.get(id=i.user_id.id).username,"email":User.objects.get(id=i.user_id.id).email,"currrency":i.currrency,"status":i.status,"comment":i.comment,"image":i.image,"created_at":i.created_at,"amount":i.amount} for i in data if i.user_id.role=='admin']
+        
+        
+        return Response({"status": True, "message": "Payments retrieved successfully", "data": data},status=status.HTTP_200_OK)
+
+
+class GetQrUpi(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'superadmin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        upi=UPIID_data.objects.all()[0]
+        serial = UPIID_dataSerial(upi).data
+        return Response({"status":True,"message":"success","data":serial},status=status.HTTP_200_OK)
+
+
+
+
+
+class createqrupi(APIView):
+    def post(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        data = request.data
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'superadmin':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            try:
+                Merchant_name=data.get('Merchant_name')
+                upiid=data.get('upi_id')
+                upi=UPIID_data.objects.all()[0]
+                upi.Merchant_name=Merchant_name
+                upi.upi_id=upiid
+                upi.save()
+            except Exception as e:
+                print("error",e)
+            return Response({"status":True,"message":"UPI id add succesfully"},status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"status": False, "message": "Membership not found"}, status=status.HTTP_404_NOT_FOUND)
+      

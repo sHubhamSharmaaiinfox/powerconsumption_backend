@@ -14,6 +14,7 @@ from channels.auth import AuthMiddlewareStack
 from django.core.asgi import get_asgi_application
 
 from django.urls import path
+from .consumer import *
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "prj.settings")
 
@@ -22,7 +23,9 @@ application = ProtocolTypeRouter({
   "websocket": AuthMiddlewareStack(
         URLRouter( 
             [
-          
+            path("ws/live-data/<str:meter_id>/", GetMeterData.as_asgi()),
+            path("ws/card-data/<str:meter_id>/", GetCardsData.as_asgi()),
+            path('ws/kw-data/<str:meter_id>/',GetKwData.as_asgi())
             ]
     ))
 }) 
