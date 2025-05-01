@@ -5,16 +5,20 @@ KEYS = getattr(settings, "KEY", None)
 import jwt
 from .serializer import *
 from .models import *
+import time
 
 
-MQTT_BROKER = "13.127.126.37"  
+#MQTT_BROKER = "13.127.126.37"  
+MQTT_BROKER = "13.232.128.63"
 MQTT_PORT = 1883         
-MQTT_TOPIC = "test/topic"
+MQTT_TOPIC = "#"
+MQTT_USERNAME = "mqttuser"
+MQTT_PASSWORD = "admin"
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
-        print("Connected to MQTT broker")
-        client.subscribe(MQTT_TOPIC)  
+        print("Connected to MQTT Broker!")
+        client.subscribe(MQTT_TOPIC)  # Subscribe to all topics
     else:
         print(f"Failed to connect, return code {rc}")
 
@@ -22,14 +26,15 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     try:
         data = json.loads(msg.payload.decode("utf-8"))
-        print(data)
+        print(data,msg.topic)
         token = data.get("token")
         power = data.get("power")
         data_ = data.get('data')
-        d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+        #time.sleep(1)
+        #d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
 
-        meter_id = UserMeters.objects.get(id=d.get('meter_id'))
-        UserMeterReadings.objects.create(user_token=token,power=power,meter_id=meter_id,data=data_)
+        #meter_id = UserMeters.objects.get(id=d.get('meter_id'))
+        #UserMeterReadings.objects.create(user_token=token,power=power,meter_id=meter_id,data=data_)
         print("created successfully")   
     except Exception as e:
         print(f"Error processing MQTT message: {e}")
@@ -37,6 +42,7 @@ def on_message(client, userdata, msg):
 
 def start_mqtt():
     client = mqtt.Client()
+    client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     client.on_connect = on_connect
     client.on_message = on_message
     try:
