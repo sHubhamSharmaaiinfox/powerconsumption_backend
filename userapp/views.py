@@ -12,10 +12,11 @@ from django.db.models.functions import Cast
 from datetime import datetime,timedelta
 from math import isfinite
 from core.serializer import *
-from django.db.models import Max, Sum  
+from django.db.models import Max, Sum  , F, ExpressionWrapper, FloatField
 from django.utils.timezone import now,make_aware
-from django.db.models.functions import TruncMonth,TruncHour
+from django.db.models.functions import TruncMonth,TruncHour,TruncMinute
 from django.contrib.auth.hashers import make_password
+
 
 
 
@@ -704,6 +705,199 @@ class UserProfile(APIView):
             {"status":True,"message":"User Profile","data":data},status=status.HTTP_200_OK
         )
     
+
+
+class GetLocations(APIView):
+    def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            membership_id = UserMemberships.objects.filter(user_id = usr.id).first()
+            devices = UserMeters.objects.filter(member_id=membership_id)
+            data = UserMeterSerial(devices,many=True).data
+        except:
+            data = []
+        return Response(
+            {
+            "status":True,
+            "message":"success",
+            "data":data
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+class Parameters(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        parameters = ['Voltage_P_N',"Voltage_P_P","Current","Frequency","ActivePower_K_W","ApparentPower_KVA","PowerFactor","TotalActivePower_KWH","TotalApparentPower_KVA","PhaseAngle","THD_Voltage","THD_Current"]
+        return Response({"status":True,"message":"success","data":parameters},status=status.HTTP_200_OK)
+
+class InitialData(APIView):
+    def get(self,request):
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            membership_id = UserMemberships.objects.filter(user_id = usr.id).first()
+            devices = UserMeters.objects.filter(member_id=membership_id.id).last()
+            l = devices.id
+            location_name=devices.location
+            print('device id',devices.id)
+            n = now()
+            six_hours_ago = n - timedelta(hours=6)
+            readings = UserMeterReadings.objects.filter(datetime__gte=six_hours_ago,meter_id=devices)
+            readings = readings.annotate(
+                    row_avg=ExpressionWrapper(
+                        (F('data__Current__R') + F('data__Current__Y') + F('data__Current__B')) / 3,
+                    output_field=FloatField(),
+                    )
+                    )
+            result = (
+                readings.annotate(
+                    interval=TruncMinute('datetime', kind='minute', precision=15)  # Group by 15-minute intervals
+                    )
+                .values('interval')  # Group by the truncated interval
+                .annotate(
+                    sum_row_avg=Sum('row_avg')  # Sum the row-wise averages in each interval
+                    )
+                .order_by('interval')  # Order by interval
+                )
+            lst = []
+            time = []
+            for item in result:
+                lst.append(item['sum_row_avg'])
+                time.append(item['interval'])     
+        except:
+            lst=[]
+            time = []
+            l=None
+            location_name = ""
+        return Response(
+            {
+            "status":True,
+            "message":"success",
+            "data":lst,
+            "time":time,
+            "location":l,
+            "location_name":location_name
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
+class ChangeChartData(APIView):
+    def post(self,request):
+        data = request.data
+        token = request.META.get('HTTP_AUTHORIZATION')
+        try:
+            d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+            usr = User.objects.get(email=d.get("email"))
+            if d.get('method') != "verified" or usr.role != 'user':
+                return Response({"status": False, "message": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.ExpiredSignatureError:
+            return Response({"status": False, "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({"status": False, "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"status": False, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        location = data.get('id')
+        interval = data.get("initInterval")
+        parameter = data.get("initparameter")
+        print(data)
+
+        if interval == "15m":
+            interval = 15
+        elif interval == "30m":
+            interval = 30
+        elif interval == "1h":
+            interval = 60
+        r='R'
+        y="Y"
+        b="B"
+        if parameter == "Voltage_P_P" or parameter == "Voltage_P_N":
+            r= "R_N"
+            y= "Y_N"
+            b= "B_N"
+        if True:
+            
+            devices = UserMeters.objects.get(id=location)
+            n= now()
+            l = devices.id
+            location_name=devices.location
+            six_hours_ago = n - timedelta(hours=6)
+            readings = UserMeterReadings.objects.filter(datetime__gte=six_hours_ago,meter_id=devices)
+            readings = readings.annotate(
+                    row_avg=ExpressionWrapper(
+                        (F(f'data__{parameter}__{r}') + F(f'data__{parameter}__{y}') + F(f'data__{parameter}__{b}')) / 3,
+                    output_field=FloatField(),
+                    )
+                    )
+            result = (
+                readings.annotate(
+                    interval=TruncMinute('datetime', kind='minute', precision=interval)  # Group by 15-minute intervals
+                    )
+                .values('interval')  # Group by the truncated interval
+                .annotate(
+                    sum_row_avg=Sum('row_avg')  # Sum the row-wise averages in each interval
+                    )
+                .order_by('interval')  # Order by interval
+                )
+            lst = []
+            time = []
+            for item in result:
+                lst.append(item['sum_row_avg'])
+                time.append(item['interval']) 
+            
+        else:
+            lst = []
+            time = []
+            l=None
+            location_name=""
+        return Response({
+                        "status":True,
+                        "message":"success",
+                        "data":lst,
+                        "time":time,
+                        "location":l,
+                        "location_name":location_name
+                        },
+                        status=status.HTTP_200_OK)
+
+
+
 
 
 

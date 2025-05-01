@@ -27,6 +27,7 @@ def on_message(client, userdata, msg):
         power = data.get("power")
         data_ = data.get('data')
         d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+
         meter_id = UserMeters.objects.get(id=d.get('meter_id'))
         UserMeterReadings.objects.create(user_token=token,power=power,meter_id=meter_id,data=data_)
         print("created successfully")   

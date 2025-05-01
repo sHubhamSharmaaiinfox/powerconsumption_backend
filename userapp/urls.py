@@ -29,5 +29,9 @@ urlpatterns = [
     path('add-feedback',views.AddFeedback.as_view()),
     path('overall-power',views.OverallPower.as_view()),
     path('kw-chart',views.Kwchart.as_view()),
-    path('meter-cards-data',views.MeterCardsData.as_view())
+    path('meter-cards-data',views.MeterCardsData.as_view()),
+    path('get-locations',views.GetLocations.as_view()),
+    path('parameters',views.Parameters.as_view()),
+    path('initial-data',views.InitialData.as_view()),
+    path("change-chart-data",views.ChangeChartData.as_view())
 ]                   

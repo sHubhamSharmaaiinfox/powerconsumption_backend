@@ -100,6 +100,15 @@ class UserMeterReadings(models.Model):
 
 
 
+class AlertLimits(models.Model):
+    user_id=models.ForeignKey("core.User", db_column='user_id', on_delete=models.CASCADE)
+    upper_limit = models.CharField(max_length=250)
+    lower_limit = models.CharField(max_length=250)
+    status = models.CharField(max_length=200)
+    class Meta:
+        db_table = 'alertlimits'
+
+
 
 class Alerts(models.Model):
     meter_id = models.ForeignKey("core.UserMeters",db_column="meter_id",on_delete=models.CASCADE)

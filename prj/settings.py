@@ -11,15 +11,9 @@ ALLOWED_HOSTS = ['*']
 CORS_ORIGIN_ALLOW_ALL = True
 
 
-
-
-
 CORS_ORIGIN_WHITELIST = (
   'https://power-consumption.vercel.app',
 )
-
-
-
 
 
 CORS_ALLOW_METHODS = [
@@ -30,9 +24,6 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
-
-
-
 
 
 CORS_ALLOW_HEADERS = [
