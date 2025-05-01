@@ -83,10 +83,10 @@ CHANNEL_LAYERS = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'powerconsumption',
-        'HOST':'aiinfox.cf4ysyasm9bi.ap-south-1.rds.amazonaws.com',
+        'NAME': 'power',
+        'HOST':'database-2.cx26awak2j1k.ap-south-1.rds.amazonaws.com',
         'USER':'admin',
-        'PASSWORD':'narakanar',
+        'PASSWORD':'admin123',
         'PORT':'3306'
     }
 }
