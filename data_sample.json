@@ -1,61 +1,62 @@
-{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtZXRlcl9pZCI6MTQsImV4cCI6MTc2ODU2NDk1OX0.hs11qnDdqA7Aa9mLfUL1AhVqTfQFCxODIxnV7jVwb2E",
-"power":294.00,
-"data":{
-    "Voltage_P_N": {
-        "R_N": 215.0,
-        "Y_N": 215.0,
-        "B_N": 215.0
-    },
-    "Voltage_P_P": {
-        "R_N": 415.0,
-        "Y_N": 415.0,
-        "B_N": 415.0
-    },
-    "Current": {
-        "R": 102.00,
-        "Y": 103.00,
-        "B": 105.00
-    },
-    "Frequency": {
-        "R": 50.00,
-        "Y": 50.00,
-        "B": 50.00
-    },
-    "ActivePower_K_W": {
-        "R": 25.00,
-        "Y": 25.00,
-        "B": 36.00
-    },
-    "ApparentPower_KVA": {
-        "R": 15.00,
-        "Y": 36.00,
-        "B": 25.00
-    },
-    "PowerFactor": {
-        "R": 98.00,
-        "Y": 98.00,
-        "B": 98.00
-    },
-    "TotalActivePower_KWH": {
-        "KWH": 123456789.2556
-    },
-    "TotalApparentPower_KVA": {
-        "KVAH": 123456789.2345
-    },
-    "PhaseAngle": {
-        "R": 15.00,
-        "Y": 36.00,
-        "B": 25.00
-    },
-    "THD_Voltage": {
-        "R": 15.00,
-        "Y": 36.00,
-        "B": 25.00
-    },
-    "THD_Current": {
-        "R": 15.00,
-        "Y": 36.00,
-        "B": 25.00
-    }
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtZXRlcl9pZCI6MTQsImV4cCI6MTc2ODU2NDk1OX0.hs11qnDdqA7Aa9mLfUL1AhVqTfQFCxODIxnV7jVwb2E",
+    "power": 294.00,
+    "data": {
+        "Voltage_P_N": {
+            "R_N": 215.0,
+            "Y_N": 215.0,
+            "B_N": 215.0
+        },
+        "Voltage_P_P": {
+            "R_N": 415.0,
+            "Y_N": 415.0,
+            "B_N": 415.0
+        },
+        "Current": {
+            "R": 102.00,
+            "Y": 103.00,
+            "B": 105.00
+        },
+        "Frequency": {
+            "R": 50.00,
+            "Y": 50.00,
+            "B": 50.00
+        },
+        "ActivePower_K_W": {
+            "R": 25.00,
+            "Y": 25.00,
+            "B": 36.00
+        },
+        "ApparentPower_KVA": {
+            "R": 15.00,
+            "Y": 36.00,
+            "B": 25.00
+        },
+        "PowerFactor": {
+            "R": 98.00,
+            "Y": 98.00,
+            "B": 98.00
+        },
+        "TotalActivePower_KWH": {
+            "KWH": 123456789.2556
+        },
+        "TotalApparentPower_KVA": {
+            "KVAH": 123456789.2345
+        },
+        "PhaseAngle": {
+            "R": 15.00,
+            "Y": 36.00,
+            "B": 25.00
+        },
+        "THD_Voltage": {
+            "R": 15.00,
+            "Y": 36.00,
+            "B": 25.00
+        },
+        "THD_Current": {
+            "R": 15.00,
+            "Y": 36.00,
+            "B": 25.00
+        }
     }
 }

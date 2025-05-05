@@ -8,6 +8,8 @@ from .models import *
 import time
 
 
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtZXRlcl9pZCI6MSwiZXhwIjoxNzc3OTc1MTAzfQ.SLn6l6iIqVuz2TqGNRR7gxmjMQgU3sKmd4lR0F0QLFg"
+
 #MQTT_BROKER = "13.127.126.37"  
 MQTT_BROKER = "13.232.128.63"
 MQTT_PORT = 1883         
