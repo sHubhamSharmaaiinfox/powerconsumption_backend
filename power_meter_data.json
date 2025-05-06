@@ -1,0 +1,61 @@
+{
+    "power": 0,
+    "data": {
+        "Voltage_P_N": {
+            "R_N": 0,
+            "Y_N": 0,
+            "B_N": 0
+        },
+        "Voltage_P_P": {
+            "R_N": -0.003,
+            "Y_N": 0.0,
+            "B_N": 0
+        },
+        "Current": {
+            "R": 0,
+            "Y": 0,
+            "B": 0
+        },
+        "Frequency": {
+            "R": 0,
+            "Y": 0,
+            "B": 0
+        },
+        "ActivePower_K_W": {
+            "R": 0,
+            "Y": 0,
+            "B": 0
+        },
+        "ApparentPower_KVA": {
+            "R": 0,
+            "Y": 0,
+            "B": 0
+        },
+        "PowerFactor": {
+            "R": 0,
+            "Y": 0,
+            "B": 0
+        },
+        "TotalActivePower_KWH": {
+            "KWH": 0.0
+        },
+        "TotalApparentPower_KVA": {
+            "KVAH": 0
+        },
+        "PhaseAngle": {
+            "R": 0,
+            "Y": 0,
+            "B": 0
+        },
+        "THD_Voltage": {
+            "R": 0,
+            "Y": 0,
+            "B": 0
+        },
+        "THD_Current": {
+            "R": 0,
+            "Y": 0,
+            "B": 0
+        }
+    }
+}

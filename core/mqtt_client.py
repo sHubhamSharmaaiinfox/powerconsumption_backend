@@ -12,7 +12,7 @@ from datetime import datetime
 token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtZXRlcl9pZCI6MSwiZXhwIjoxNzc3OTc1MTAzfQ.SLn6l6iIqVuz2TqGNRR7gxmjMQgU3sKmd4lR0F0QLFg"
 
 #MQTT_BROKER = "13.127.126.37"  
-MQTT_BROKER = "13.232.128.63"
+MQTT_BROKER = "13.233.103.147"
 MQTT_PORT = 1883         
 MQTT_TOPIC = "#"
 MQTT_USERNAME = "mqttuser"
@@ -95,18 +95,18 @@ class ModbusDataCollector:
         output = {
             "power": 0.0,  # Will be calculated from ActivePower_K_W
             "data": {
-                "Voltage_P_N": {"R_N": None, "Y_N": None, "B_N": None},
-                "Voltage_P_P": {"R_N": None, "Y_N": None, "B_N": None},
-                "Current": {"R": None, "Y": None, "B": None},
-                "Frequency": {"R": None, "Y": None, "B": None},
-                "ActivePower_K_W": {"R": None, "Y": None, "B": None},
-                "ApparentPower_KVA": {"R": None, "Y": None, "B": None},
-                "PowerFactor": {"R": None, "Y": None, "B": None},
-                "TotalActivePower_KWH": {"KWH": None},
-                "TotalApparentPower_KVA": {"KVAH": None},
-                "PhaseAngle": {"R": None, "Y": None, "B": None},
-                "THD_Voltage": {"R": None, "Y": None, "B": None},
-                "THD_Current": {"R": None, "Y": None, "B": None}
+                "Voltage_P_N": {"R_N": 0, "Y_N": 0, "B_N": 0},
+                "Voltage_P_P": {"R_N": 0, "Y_N": 0, "B_N": 0},
+                "Current": {"R": 0, "Y": 0, "B": 0},
+                "Frequency": {"R": 0, "Y": 0, "B": 0},
+                "ActivePower_K_W": {"R": 0, "Y": 0, "B": 0},
+                "ApparentPower_KVA": {"R": 0, "Y": 0, "B": 0},
+                "PowerFactor": {"R": 0, "Y": 0, "B": 0},
+                "TotalActivePower_KWH": {"KWH": 0},
+                "TotalApparentPower_KVA": {"KVAH": 0},
+                "PhaseAngle": {"R": 0, "Y": 0, "B": 0},
+                "THD_Voltage": {"R": 0, "Y": 0, "B": 0},
+                "THD_Current": {"R": 0, "Y": 0, "B": 0}
             }
         }
 
@@ -121,12 +121,17 @@ class ModbusDataCollector:
                     
                 if reg_ad in register_map:
                     param, sub_param, transform = register_map[reg_ad]
+                    # Filter out extremely large values (positive or negative)
+                    transformed_value = transform(value)
+                    if abs(transformed_value) > 1e10:
+                        transformed_value = 0
+                        
                     if param == "ActivePower_K_W" and sub_param == "R" and output["power"] == 0.0:
                         # Use total active power for the top-level power value
-                        output["power"] = transform(value)
+                        output["power"] = transformed_value
                     
                     # For all other parameters, store in the data structure
-                    output["data"][param][sub_param] = transform(value)
+                    output["data"][param][sub_param] = transformed_value
             except ValueError as e:
                 print(f"Invalid value for register {reg_ad}: {entry.get('D1')}, error: {e}")
             except Exception as e:
@@ -145,7 +150,25 @@ class ModbusDataCollector:
         if output["power"] == 0.0 and all(val is not None for val in output["data"]["ActivePower_K_W"].values()):
             output["power"] = sum(output["data"]["ActivePower_K_W"].values())
 
+        # Replace any remaining null values with 0
+        self.replace_null_with_zero(output)
+        
         return output
+    
+    def replace_null_with_zero(self, data):
+        """Replace all null values with 0 in the data dictionary"""
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if value is None:
+                    data[key] = 0
+                elif isinstance(value, dict):
+                    self.replace_null_with_zero(value)
+                elif isinstance(value, list):
+                    for i, item in enumerate(value):
+                        if item is None:
+                            value[i] = 0
+                        elif isinstance(item, (dict, list)):
+                            self.replace_null_with_zero(item)
 
 # Create a global instance of the data collector
 modbus_collector = ModbusDataCollector()
@@ -175,9 +198,12 @@ def on_message(client, userdata, msg):
                 data_ = processed_data.get('data')
                 
                 # Database operations
-                #d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
-                #meter_id = UserMeters.objects.get(id=d.get('meter_id'))
-                #UserMeterReadings.objects.create(user_token=token, power=power, meter_id=meter_id, data=data_)
+                d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+                meter_id = UserMeters.objects.get(id=d.get('meter_id'))
+                UserMeterReadings.objects.create(user_token=token, power=power, meter_id=meter_id, data=data_)
+                
+
+                
                 
                 print("Processed Modbus data successfully")
                 print("Output:", json.dumps(processed_data, indent=4))
