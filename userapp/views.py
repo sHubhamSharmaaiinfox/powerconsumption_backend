@@ -43,7 +43,13 @@ class MetersData(APIView):
         meter_id = [i.id for i in UserMeters.objects.filter(member_id__in = members_id)]
         meter_readings =  UserMeterReadings.objects.filter(meter_id__in=meter_id)
         srl = UserMeterReadingsSerial(meter_readings,many=True).data
-        total_active_power = sum([sum(list(float(j) for j in i.get('data').get("ActivePower_K_W").values())) for i in srl])
+        print("srl",srl)
+        
+        print("Active Power --->",([(list(j if j else 0 for j in i.get('data').get("ActivePower_K_W").values())) for i in srl]))
+        try:
+            total_active_power = sum([sum(list(float(j) if j else 0 for j in i.get('data').get("ActivePower_K_W").values())) for i in srl])
+        except:
+            total_active_power = 0
         
         try:
             max_power_row = UserMeterReadings.objects.filter(meter_id__in=meter_id).order_by('-power').first().power

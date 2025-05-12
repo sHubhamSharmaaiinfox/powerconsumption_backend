@@ -21,6 +21,29 @@ import pandas as pd
 from django.core.mail import EmailMessage
 
 
+def safe_float(value):
+    """Safely convert a value to float, returning 0 for None or invalid values"""
+    try:
+        if value is None:
+            return 0
+        return float(value)
+    except (ValueError, TypeError):
+        return 0
+
+def calculate_total_active_power(serialized_data):
+    """Calculate total active power safely handling None values"""
+    total = 0
+    for entry in serialized_data:
+        try:
+            # Get the ActivePower_K_W dictionary, default to empty dict if not found
+            active_power = entry.get('data', {}).get('ActivePower_K_W', {})
+            # Sum all phase values, defaulting to 0 for any None values
+            phase_sum = sum(safe_float(active_power.get(phase, 0)) for phase in ['R', 'Y', 'B'])
+            total += phase_sum
+        except Exception:
+            # Skip entries with missing or invalid data
+            continue
+    return total
 
 def convert_image_to_base64(image_path):
     """Convert image to base64 string."""
