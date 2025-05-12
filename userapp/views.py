@@ -296,7 +296,7 @@ class KwhAPI(APIView):
 
         result = [
             {
-                "meter_id": entry["meter_id"],
+                "meter_id": UserMeters.objects.get(id=entry["meter_id"]).name,
                 "total_power_today": float(entry["total_power_today"]) if entry["total_power_today"] is not None else 0,
                 "peak_power_today": float(entry["peak_power_today"]) if entry["peak_power_today"] is not None else 0,
                 "total_power_month": float(entry["total_power_month"]) if entry["total_power_month"] is not None else 0,

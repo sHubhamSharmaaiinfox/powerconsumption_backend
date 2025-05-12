@@ -71,10 +71,15 @@ class ModbusDataCollector:
         self.collected_data = []
         self.last_save_time = datetime.now()
         self.save_interval = 60  # Save data every 60 seconds
+        self.current_id = None   # Store the current ID being processed
     
     def add_data(self, data):
         """Add Modbus data entry to collection"""
         if isinstance(data, dict) and 'Type' in data and data.get('Type') == 'MR':
+            # Store the ID from the current data packet
+            if 'ID' in data:
+                self.current_id = data.get('ID')
+                
             self.collected_data.append(data)
             
             # Check if it's time to process the data
@@ -93,6 +98,7 @@ class ModbusDataCollector:
         """Process collected Modbus data into desired output format"""
         # Initialize the output JSON structure
         output = {
+            "ID": self.current_id,  # Include the ID in the output
             "power": 0.0,  # Will be calculated from ActivePower_K_W
             "data": {
                 "Voltage_P_N": {"R_N": 0, "Y_N": 0, "B_N": 0},
@@ -185,6 +191,7 @@ def on_message(client, userdata, msg):
     try:
         data = json.loads(msg.payload.decode("utf-8"))
         print(data, msg.topic)
+        print("data Id", data.get("ID"))
         
         # Check if this is a Modbus data format
         if isinstance(data, dict) and 'Type' in data and data.get('Type') == 'MR':
@@ -193,17 +200,19 @@ def on_message(client, userdata, msg):
             
             if processed_data:
                 # Now we have a complete set of processed data
-                token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtZXRlcl9pZCI6MSwiZXhwIjoxNzc3OTc1MTAzfQ.SLn6l6iIqVuz2TqGNRR7gxmjMQgU3sKmd4lR0F0QLFg"
+                print("processed_data", processed_data)
+                #token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtZXRlcl9pZCI6MSwiZXhwIjoxNzc3OTc1MTAzfQ.SLn6l6iIqVuz2TqGNRR7gxmjMQgU3sKmd4lR0F0QLFg"
                 power = processed_data.get("power")
                 data_ = processed_data.get('data')
                 
+                # Include the ID in the database record if needed
+                device_id = processed_data.get("ID")
+                
                 # Database operations
-                d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
-                meter_id = UserMeters.objects.get(id=d.get('meter_id'))
-                UserMeterReadings.objects.create(user_token=token, power=power, meter_id=meter_id, data=data_)
-                
-
-                
+                #d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
+                meter_id = UserMeters.objects.get(name= device_id)
+                # You might need to modify your model to include device_id if needed
+                UserMeterReadings.objects.create(user_token=meter_id.token, power=power, meter_id=meter_id, data=data_)
                 
                 print("Processed Modbus data successfully")
                 print("Output:", json.dumps(processed_data, indent=4))
@@ -222,6 +231,8 @@ def on_message(client, userdata, msg):
             token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtZXRlcl9pZCI6MSwiZXhwIjoxNzc3OTc1MTAzfQ.SLn6l6iIqVuz2TqGNRR7gxmjMQgU3sKmd4lR0F0QLFg"
             power = data.get("power")
             data_ = data.get('data')
+            device_id = data.get("ID")  # Get the ID from non-Modbus format data
+            
             #time.sleep(1)
             #d = jwt.decode(token, key=KEYS, algorithms=['HS256'])
 
